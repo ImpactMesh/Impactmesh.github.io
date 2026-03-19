@@ -1,79 +1,387 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Impactmesh</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
-      background: #0a0a0a;
-      color: #e0e0e0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .container {
-      text-align: center;
-      padding: 2rem;
-    }
-
-    h1 {
-      font-size: 3rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      margin-bottom: 1rem;
-      background: linear-gradient(135deg, #fff 0%, #888 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .tagline {
-      font-size: 1.1rem;
-      color: #666;
-      margin-bottom: 2.5rem;
-    }
-
-    .status {
-      display: inline-block;
-      padding: 0.4rem 1rem;
-      border: 1px solid #333;
-      border-radius: 100px;
-      font-size: 0.85rem;
-      color: #888;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-
-    .status::before {
-      content: '';
-      display: inline-block;
-      width: 6px;
-      height: 6px;
-      background: #4ade80;
-      border-radius: 50%;
-      margin-right: 0.5rem;
-      vertical-align: middle;
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-  </style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>IMPACT MESH</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "tertiary": "#FFCC00",
+        "surface": "#0A0A0A",
+        "surface-container": "#0A0A0A",
+        "surface-container-low": "#0A0A0A",
+        "surface-container-high": "#121212",
+        "surface-container-highest": "#1A1A1A",
+        "surface-bright": "#1A1A1A",
+        "surface-variant": "#121212",
+        "primary": "#FF6600",
+        "primary-container": "#FF6600",
+        "secondary": "#FF3300",
+        "secondary-container": "#9efb00",
+        "on-surface": "#FF6600",
+        "on-surface-variant": "#A0A0A0",
+        "on-primary": "#0A0A0A",
+        "on-primary-container": "#FF6600",
+        "on-background": "#FF6600",
+        "outline": "#404040",
+        "outline-variant": "#262626",
+        "background": "#0A0A0A",
+        "error": "#FF3300",
+      },
+      fontFamily: {
+        "headline": ["Space Grotesk"],
+        "body": ["Space Grotesk"],
+        "label": ["Space Grotesk"]
+      },
+      borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+    },
+  },
+}
+</script>
+<style type="text/tailwindcss">
+  .impact-mesh-bg {
+    background-image: linear-gradient(rgba(255, 102, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 102, 0, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .scanline-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: linear-gradient(rgba(10, 10, 10, 0) 50%, rgba(255, 102, 0, 0.05) 50%);
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.3;
+  }
+  .electric-bloom {
+    text-shadow: 0 0 10px #FF6600, 0 0 2px rgba(255, 102, 0, 0.8);
+  }
+  .yellow-bloom {
+    text-shadow: 0 0 10px #FFCC00, 0 0 2px rgba(255, 204, 0, 0.8);
+  }
+  .button-bloom {
+    box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
+    border: 1px solid #FF6600;
+  }
+  .blueprint-stripes {
+    background: repeating-linear-gradient(45deg, #FFCC00, #FFCC00 5px, #0A0A0A 5px, #0A0A0A 10px);
+  }
+  .hazard-stripe {
+    background: repeating-linear-gradient(45deg, #ff6600, #ff6600 10px, #0A0A0A 10px, #0A0A0A 20px);
+  }
+  .abstract-line {
+    background: #FF6600;
+    opacity: 0.15;
+    position: absolute;
+  }
+</style>
 </head>
-<body>
-  <div class="container">
-    <h1>Impactmesh</h1>
-    <p class="tagline">Something is coming.</p>
-    <span class="status">Building</span>
+<body class="bg-background text-on-background font-body selection:bg-primary-container selection:text-on-primary overflow-x-hidden uppercase tracking-wider">
+
+<div class="scanline-overlay"></div>
+
+<!-- Background decorative lines -->
+<div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+  <div class="abstract-line h-px w-full top-1/4 left-0"></div>
+  <div class="abstract-line h-px w-full top-3/4 left-0"></div>
+  <div class="abstract-line w-px h-full left-1/4 top-0"></div>
+  <div class="abstract-line w-px h-full left-3/4 top-0"></div>
+  <div class="absolute top-[10%] left-[5%] w-32 h-32 border border-primary/20 rounded-full"></div>
+  <div class="absolute bottom-[10%] right-[5%] w-48 h-48 border border-primary/20 rotate-45"></div>
+</div>
+
+<main class="relative impact-mesh-bg">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- HERO SECTION (ref3 layout) -->
+<!-- ═══════════════════════════════════════════ -->
+
+<!-- Top hazard stripe -->
+<div class="w-full h-1 blueprint-stripes opacity-40 relative z-[60]"></div>
+
+<!-- Fixed header -->
+<header class="w-full px-8 py-6 flex justify-between items-start z-50 relative">
+  <div class="flex flex-col">
+    <div class="text-primary font-headline font-bold text-2xl tracking-tighter electric-bloom">NERV_PROTOCOL_V1.0</div>
+    <div class="text-[10px] text-tertiary font-mono tracking-widest opacity-80 yellow-bloom">MAGI_SYSTEM_REF_01 // GEOFRONT_CORE_ACTIVE</div>
   </div>
+  <div class="hidden md:flex flex-col items-end">
+    <div class="text-[10px] text-primary font-mono tracking-[0.2em] electric-bloom">SYNC_RATE: 99.998%</div>
+    <div class="text-[10px] text-outline font-mono tracking-widest">PRIORITY: EMERGENCY_LVL_1</div>
+  </div>
+</header>
+
+<section class="max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-16 relative z-10 px-6 pt-8 pb-24">
+  <!-- Left column -->
+  <div class="lg:col-span-7 flex flex-col justify-center space-y-10">
+    <div class="inline-flex items-center space-x-4 border-l-4 border-primary pl-6 bg-surface-container/50 py-4 backdrop-blur-sm">
+      <span class="material-symbols-outlined text-tertiary yellow-bloom" style="font-variation-settings: 'FILL' 1;">warning</span>
+      <span class="font-headline text-xs tracking-[0.3em] text-on-surface">STATUS: [ COMBAT_READY ]</span>
+    </div>
+
+    <h1 class="font-headline font-bold text-7xl md:text-9xl text-on-surface leading-none tracking-tighter">
+      IMPACT<br/><span class="text-primary electric-bloom">MESH</span>
+    </h1>
+
+    <div class="space-y-8">
+      <p class="text-xl md:text-2xl text-tertiary font-bold tracking-tight max-w-2xl leading-tight border-b border-outline-variant/50 pb-8 yellow-bloom">
+        A TACTICAL GRADE BLOCKCHAIN PROTOCOL ENGINEERED FOR CRITICAL DECENTRALIZED INFRASTRUCTURE.
+      </p>
+      <p class="text-sm md:text-base text-on-surface/80 leading-relaxed max-w-xl font-light opacity-80">
+        IMPACT MESH IS A HIGH-STAKES DISTRIBUTED LEDGER DESIGNED TO FACILITATE ABSOLUTE SYNCHRONICITY. LEVERAGING GEOMETRIC SHARDING AND MAGI-DERIVED DATA ROUTING, IT PROVIDES AN UNYIELDING FOUNDATION FOR HIGH-THROUGHPUT COMMAND SCENARIOS.
+      </p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-8 pt-8">
+      <button class="bg-primary text-black font-bold px-12 py-6 text-sm tracking-[0.3em] flex items-center group transition-all duration-75 active:scale-95 button-bloom">
+        INITIATE_WHITESHEET
+        <span class="material-symbols-outlined ml-4 text-lg group-hover:translate-x-2 transition-transform">bolt</span>
+      </button>
+      <div class="flex items-center space-x-6">
+        <div class="flex flex-col">
+          <span class="text-[10px] font-headline text-tertiary yellow-bloom tracking-[0.2em] uppercase max-w-[160px] leading-tight font-bold">
+            POWERED BY AREON SPATIAL CORE
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right column -->
+  <div class="lg:col-span-5 flex flex-col space-y-6 justify-center">
+    <!-- Live situation room -->
+    <div class="relative w-full aspect-video border border-primary/30 overflow-hidden bg-black/60 backdrop-blur-md">
+      <div class="absolute inset-0 bg-gradient-to-t from-background to-transparent opacity-80"></div>
+      <div class="absolute inset-0 bg-surface-container-high/80"></div>
+      <div class="absolute top-4 left-4 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+        <span class="text-[9px] text-primary electric-bloom font-mono">LIVE_COMBAT_SITUATION_ROOM</span>
+      </div>
+    </div>
+
+    <!-- Stats panel -->
+    <div class="relative w-full border border-primary/40 bg-surface-container/90 backdrop-blur-xl p-8 group">
+      <div class="absolute top-0 right-0 w-32 h-4 blueprint-stripes opacity-60 transform translate-x-12 translate-y-2 rotate-45"></div>
+      <div class="h-full flex flex-col justify-between relative z-10 space-y-8">
+        <div class="flex justify-between items-start">
+          <div class="space-y-1">
+            <div class="text-[10px] text-tertiary yellow-bloom tracking-widest">RESPONSE_LATENCY</div>
+            <div class="text-5xl font-bold font-mono text-primary electric-bloom">0.004MS</div>
+          </div>
+          <span class="material-symbols-outlined text-secondary electric-bloom text-3xl">emergency</span>
+        </div>
+        <div class="space-y-6">
+          <div class="bg-surface-container-highest p-4 border-l-2 border-primary">
+            <div class="text-[9px] text-tertiary mb-2 font-mono">MAGI_SYNC_PROGRESS</div>
+            <div class="w-full h-1 bg-outline-variant flex overflow-hidden">
+              <div class="w-3/4 bg-primary h-full electric-bloom"></div>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="p-4 bg-surface-container-low border border-primary/20">
+              <div class="text-[9px] text-outline uppercase font-mono mb-1">UNITS_ACTIVE</div>
+              <div class="text-2xl font-bold text-primary">14,802</div>
+            </div>
+            <div class="p-4 bg-surface-container-low border border-primary/20">
+              <div class="text-[9px] text-outline uppercase font-mono mb-1">TPS_BURST</div>
+              <div class="text-2xl font-bold text-primary">1.2M+</div>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-between items-end border-t border-primary/20 pt-6">
+          <div class="text-[9px] font-mono text-outline">SEC_ID: 0XFD49_NERV</div>
+          <div class="flex gap-2">
+            <div class="w-2 h-2 bg-primary electric-bloom"></div>
+            <div class="w-2 h-2 bg-tertiary"></div>
+            <div class="w-2 h-2 bg-secondary"></div>
+          </div>
+        </div>
+      </div>
+      <div class="absolute top-0 left-0 w-4 h-4 border-t border-l border-primary"></div>
+      <div class="absolute bottom-0 right-0 w-4 h-4 border-b border-r border-primary"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Decorative elements -->
+<div class="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-primary/5 to-transparent pointer-events-none z-0"></div>
+<div class="absolute top-20 right-10 w-24 h-24 pointer-events-none opacity-20 z-0">
+  <div class="w-full h-full border border-primary rounded-full flex items-center justify-center">
+    <div class="w-16 h-16 border border-tertiary rotate-45"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- THREE CARDS SECTION (ref2 gray band) -->
+<!-- ═══════════════════════════════════════════ -->
+
+<section class="px-6 py-24 bg-[#121212] relative border-t border-b border-outline-variant/20">
+  <div class="max-w-7xl mx-auto">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+      <!-- Card 1: Geometric Lattice -->
+      <div class="bg-[#1A1A1A] border border-outline-variant/20 p-8 h-80 relative group overflow-hidden flex flex-col items-center justify-center">
+        <div class="absolute inset-0 opacity-10 flex items-center justify-center">
+          <svg class="w-full h-full p-4" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <path d="M50 5 L95 27.5 V72.5 L50 95 L5 72.5 V27.5 Z" fill="none" stroke="#FF6600" stroke-width="0.5"/>
+            <circle cx="50" cy="50" r="30" fill="none" stroke="#FF6600" stroke-dasharray="2,2" stroke-width="0.2"/>
+            <line x1="50" x2="50" y1="5" y2="95" stroke="#FF6600" stroke-width="0.1"/>
+            <line x1="5" x2="95" y1="27.5" y2="72.5" stroke="#FF6600" stroke-width="0.1"/>
+            <line x1="95" x2="5" y1="27.5" y2="72.5" stroke="#FF6600" stroke-width="0.1"/>
+          </svg>
+        </div>
+        <span class="font-headline font-black text-primary/40 text-[8px] tracking-[1em] absolute top-4 uppercase">GEOMETRIC_SHARDING_V1</span>
+        <div class="relative z-10 text-center">
+          <span class="material-symbols-outlined text-primary text-5xl mb-4">polymer</span>
+          <div class="h-1 w-12 bg-primary mx-auto mb-4"></div>
+          <p class="font-label text-[10px] tracking-widest text-zinc-500 uppercase">SPATIAL_SYNC_ACTIVE</p>
+        </div>
+      </div>
+
+      <!-- Card 2: Tactical Scanner -->
+      <div class="bg-[#1A1A1A] border border-outline-variant/20 p-8 h-80 relative group overflow-hidden flex flex-col items-center justify-center">
+        <div class="absolute inset-0 opacity-20">
+          <div class="h-full w-full flex flex-col">
+            <div class="h-1/2 border-b border-primary/20 flex">
+              <div class="w-1/2 border-r border-primary/20"></div>
+              <div class="w-1/2"></div>
+            </div>
+            <div class="h-1/2 flex">
+              <div class="w-1/2 border-r border-primary/20"></div>
+              <div class="w-1/2"></div>
+            </div>
+          </div>
+        </div>
+        <div class="absolute inset-0 pointer-events-none">
+          <div class="w-full h-0.5 bg-primary/40 absolute top-1/4 animate-[bounce_4s_infinite]"></div>
+          <div class="w-0.5 h-full bg-primary/40 absolute left-3/4 animate-[pulse_2s_infinite]"></div>
+        </div>
+        <span class="font-headline font-black text-primary/40 text-[8px] tracking-[1em] absolute bottom-4 uppercase">TACTICAL_ROUTING_LINK</span>
+        <div class="relative z-10 text-center">
+          <span class="material-symbols-outlined text-primary text-5xl mb-4">view_in_ar</span>
+          <div class="flex gap-2 justify-center mb-4">
+            <div class="w-2 h-2 bg-primary"></div>
+            <div class="w-2 h-2 bg-primary/40"></div>
+            <div class="w-2 h-2 bg-primary/20"></div>
+          </div>
+          <p class="font-label text-[10px] tracking-widest text-zinc-500 uppercase">PROTOCOL_STABILITY_LOCK</p>
+        </div>
+      </div>
+
+      <!-- Card 3: Mesh Interface -->
+      <div class="bg-[#1A1A1A] border border-outline-variant/20 p-8 h-80 relative group overflow-hidden flex flex-col items-center justify-center">
+        <div class="absolute inset-0 opacity-10">
+          <svg class="w-full h-full" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#FF6600" stroke-dasharray="1,4" stroke-width="1"/>
+            <circle cx="50" cy="50" r="35" fill="none" stroke="#FF6600" stroke-width="0.5"/>
+            <circle cx="50" cy="50" r="15" fill="none" stroke="#FF6600" stroke-width="2"/>
+          </svg>
+        </div>
+        <span class="font-headline font-black text-primary/40 text-[8px] tracking-[1em] absolute top-4 uppercase">GLOBAL_SYNC_INTERFACE</span>
+        <div class="relative z-10 text-center">
+          <span class="material-symbols-outlined text-primary text-5xl mb-4">grid_guides</span>
+          <div class="w-16 h-px bg-primary/50 mx-auto mb-4"></div>
+          <p class="font-label text-[10px] tracking-widest text-zinc-500 uppercase">INFRASTRUCTURE_GEN_NEXT</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PROTOCOL SECTION (ref2 split block) -->
+<!-- ═══════════════════════════════════════════ -->
+
+<section class="grid grid-cols-1 md:grid-cols-2 min-h-[500px] relative z-10">
+  <!-- Left: text -->
+  <div class="bg-surface flex flex-col justify-center p-12 md:p-24 border-r border-outline-variant/20 relative">
+    <div class="absolute top-0 left-0 w-2 h-full hazard-stripe opacity-20"></div>
+    <div class="mb-8">
+      <span class="bg-primary text-black px-3 py-1 font-label text-[10px] font-black uppercase tracking-widest">CORE_LOGIC_01</span>
+    </div>
+    <h3 class="font-headline text-5xl md:text-6xl font-black text-on-surface mb-8 leading-tight uppercase">IMPACT MESH PROTOCOL</h3>
+    <div class="space-y-6">
+      <div class="flex gap-4 items-start">
+        <span class="font-headline text-primary font-black text-xl">01</span>
+        <p class="text-on-surface-variant text-lg border-l border-primary/30 pl-4">
+          Distributed ledger optimization for high-throughput tactical execution.
+        </p>
+      </div>
+      <div class="flex gap-4 items-start">
+        <span class="font-headline text-primary font-black text-xl">02</span>
+        <p class="text-on-surface-variant text-lg border-l border-primary/30 pl-4">
+          Geometric sharding mechanisms ensuring network-wide synchronization.
+        </p>
+      </div>
+    </div>
+    <div class="mt-12 flex gap-6">
+      <button class="bg-surface-container-highest text-on-surface px-8 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all">ESTABLISH_NODE</button>
+      <button class="text-primary underline font-label font-bold text-xs tracking-[0.2em] uppercase">VIEW_SYSTEM_DOCS</button>
+    </div>
+  </div>
+
+  <!-- Right: visual -->
+  <div class="relative bg-[#050505] overflow-hidden min-h-[400px]">
+    <div class="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent"></div>
+    <div class="absolute inset-0 flex items-center justify-center">
+      <div class="w-80 h-80 border border-primary/20 animate-[spin_30s_linear_infinite] rounded-full flex items-center justify-center">
+        <div class="w-64 h-64 border-2 border-primary/40 border-dashed rounded-full flex items-center justify-center">
+          <div class="w-48 h-48 bg-primary/10 backdrop-blur-sm rounded-full flex items-center justify-center border border-primary/60">
+            <span class="material-symbols-outlined text-primary text-8xl">hub</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Decorative overlays -->
+    <div class="absolute top-8 right-8 text-right">
+      <div class="text-primary font-black text-[8px] tracking-[0.5em] uppercase mb-1">DATA_STREAM_AUTH_SECURED</div>
+      <div class="h-1 w-24 bg-primary/40 ml-auto"></div>
+    </div>
+    <div class="absolute bottom-8 left-8">
+      <div class="flex gap-1 h-3 mb-2">
+        <div class="w-1 bg-primary"></div>
+        <div class="w-1 bg-primary/80"></div>
+        <div class="w-1 bg-primary/60"></div>
+        <div class="w-1 bg-primary/40"></div>
+        <div class="w-1 bg-primary/20"></div>
+      </div>
+      <div class="text-primary font-black text-[8px] tracking-[0.5em] uppercase">MESH_OS_v2.0.4</div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- FOOTER -->
+<!-- ═══════════════════════════════════════════ -->
+
+<footer class="bg-[#050505] flex flex-col items-center justify-center gap-6 w-full px-8 py-12 border-t border-outline-variant/10 relative z-10">
+  <div class="absolute top-0 left-0 w-full h-1 hazard-stripe opacity-10"></div>
+  <div class="text-xl font-black text-primary/40 tracking-tighter italic font-headline">IMPACT_MESH</div>
+  <div class="flex gap-12">
+    <a class="text-zinc-600 hover:text-primary font-headline text-[10px] tracking-widest uppercase transition-colors" href="#">PRIVACY_PROTOCOL</a>
+    <a class="text-zinc-600 hover:text-primary font-headline text-[10px] tracking-widest uppercase transition-colors" href="#">ENCRYPTION_STANDARDS</a>
+    <a class="text-zinc-600 hover:text-primary font-headline text-[10px] tracking-widest uppercase transition-colors" href="#">SYSTEM_STATUS</a>
+  </div>
+  <div class="text-zinc-700 font-headline text-[10px] tracking-widest uppercase opacity-80">
+    ©2024 IMPACT_MESH_STRATEGIC_OPERATIONS. POWERED BY AREON 2.
+  </div>
+</footer>
+
+<!-- Bottom hazard stripe -->
+<div class="w-full h-1 blueprint-stripes opacity-40 relative z-[60]"></div>
+
+</main>
+
 </body>
 </html>
