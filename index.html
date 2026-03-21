@@ -208,54 +208,56 @@ tailwind.config = {
 
   <!-- Right column -->
   <div class="lg:col-span-5 flex flex-col space-y-6 justify-center">
-    <!-- Live situation room -->
-    <div class="relative w-full aspect-video border border-primary/30 overflow-hidden bg-black/60 backdrop-blur-md cursor-pointer hover:border-primary/60 transition-colors" onclick="document.getElementById('coming-soon-modal').classList.remove('hidden')">
-      <img alt="Protocol Status" class="w-full h-full object-cover opacity-40 grayscale invert sepia-100 hue-rotate-[320deg] saturate-[200%]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEatBreZKCD5LNbOiWRxkrPoEu-xsaqx8CkwtDiKGmNh7e-MJdbniDkmqHRzZoCrB0COxW5VEe9iNVISJQ2-dQ2nXzl7UvjsvNpOChQOs133blor63m1azax7UpSt2SQCLXU--0gRYwLSZ_Se2cVxOCb8fH_a63mlb7a4q_9aWASBzzQEMiL8VfxkSSHabJ0s8rBAabfEqDv5lnovMZUKyVjJW0PYv5rxj9Iv93S2d-Al2XbnUn-62FP4Ty2M6lyBuxmL6HRCH8Zw"/>
-      <div class="absolute inset-0 bg-gradient-to-t from-background to-transparent opacity-80"></div>
-      <div class="absolute top-4 left-4 flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
-        <span class="text-[9px] text-primary electric-bloom font-mono">NETWORK_OVERVIEW</span>
+    <!-- Network dashboard panel (unified) -->
+    <div class="relative w-full border border-primary/40 bg-surface-container/90 backdrop-blur-xl cursor-pointer hover:border-primary/60 transition-colors" onclick="document.getElementById('coming-soon-modal').classList.remove('hidden')">
+      <!-- Top: Network overview image -->
+      <div class="relative w-full aspect-video overflow-hidden bg-black/60">
+        <img alt="Protocol Status" class="w-full h-full object-cover opacity-40 grayscale invert sepia-100 hue-rotate-[320deg] saturate-[200%]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEatBreZKCD5LNbOiWRxkrPoEu-xsaqx8CkwtDiKGmNh7e-MJdbniDkmqHRzZoCrB0COxW5VEe9iNVISJQ2-dQ2nXzl7UvjsvNpOChQOs133blor63m1azax7UpSt2SQCLXU--0gRYwLSZ_Se2cVxOCb8fH_a63mlb7a4q_9aWASBzzQEMiL8VfxkSSHabJ0s8rBAabfEqDv5lnovMZUKyVjJW0PYv5rxj9Iv93S2d-Al2XbnUn-62FP4Ty2M6lyBuxmL6HRCH8Zw"/>
+        <div class="absolute inset-0 bg-gradient-to-t from-surface-container to-transparent opacity-80"></div>
+        <div class="absolute top-4 left-4 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+          <span class="text-[9px] text-primary electric-bloom font-mono">NETWORK_OVERVIEW</span>
+        </div>
       </div>
-    </div>
-
-    <!-- Stats panel -->
-    <div class="relative w-full border border-primary/40 bg-surface-container/90 backdrop-blur-xl p-8 group">
-      <div class="h-full flex flex-col justify-between relative z-10 space-y-8">
+      <!-- Bottom: Stats -->
+      <div class="p-8 space-y-8">
         <div class="flex justify-between items-start">
           <div class="space-y-1">
-            <div class="text-[10px] text-tertiary yellow-bloom tracking-widest">RESPONSE_LATENCY</div>
-            <div class="text-5xl font-bold font-mono text-primary electric-bloom">0.004MS</div>
+            <div class="text-[10px] text-tertiary yellow-bloom tracking-widest">NETWORK_STATUS</div>
+            <div class="text-4xl font-bold font-mono text-primary/40">— — —</div>
           </div>
-          <span class="material-symbols-outlined text-secondary electric-bloom text-3xl">emergency</span>
         </div>
         <div class="space-y-6">
           <div class="bg-surface-container-highest p-4 border-l-2 border-primary">
             <div class="text-[9px] text-tertiary mb-2 font-mono">SYNC_PROGRESS</div>
             <div class="w-full h-1 bg-outline-variant flex overflow-hidden">
-              <div class="w-3/4 bg-primary h-full electric-bloom"></div>
+              <div class="w-0 bg-primary h-full"></div>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div class="p-4 bg-surface-container-low border border-primary/20">
-              <div class="text-[9px] text-outline uppercase font-mono mb-1">UNITS_ACTIVE</div>
-              <div class="text-2xl font-bold text-primary">14,802</div>
+              <div class="text-[9px] text-outline uppercase font-mono mb-1">STEM_CELLS</div>
+              <div class="text-2xl font-bold text-primary/40">—</div>
             </div>
             <div class="p-4 bg-surface-container-low border border-primary/20">
-              <div class="text-[9px] text-outline uppercase font-mono mb-1">TPS_BURST</div>
-              <div class="text-2xl font-bold text-primary">1.2M+</div>
+              <div class="text-[9px] text-outline uppercase font-mono mb-1">CELLS</div>
+              <div class="text-2xl font-bold text-primary/40">—</div>
             </div>
           </div>
         </div>
         <div class="flex justify-between items-end border-t border-primary/20 pt-6">
           <div class="text-[9px] font-mono text-outline">SEC_ID: 0XFD49</div>
           <div class="flex gap-2">
-            <div class="w-2 h-2 bg-primary electric-bloom"></div>
-            <div class="w-2 h-2 bg-tertiary"></div>
-            <div class="w-2 h-2 bg-secondary"></div>
+            <div class="w-2 h-2 bg-primary/30"></div>
+            <div class="w-2 h-2 bg-tertiary/30"></div>
+            <div class="w-2 h-2 bg-secondary/30"></div>
           </div>
         </div>
       </div>
+      <!-- Corner brackets on the unified box -->
       <div class="absolute top-0 left-0 w-4 h-4 border-t border-l border-primary"></div>
+      <div class="absolute top-0 right-0 w-4 h-4 border-t border-r border-primary"></div>
+      <div class="absolute bottom-0 left-0 w-4 h-4 border-b border-l border-primary"></div>
       <div class="absolute bottom-0 right-0 w-4 h-4 border-b border-r border-primary"></div>
     </div>
   </div>
