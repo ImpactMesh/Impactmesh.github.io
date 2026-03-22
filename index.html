@@ -1711,7 +1711,7 @@ tailwind.config = {
     const rows = 6;
     const cols = 7;
     const hexRadius = 0.58;
-    const cellRadius = hexRadius;
+    const cellRadius = hexRadius * 0.9;
     const hexHeight = 0.02;
     const xStep = Math.sqrt(3) * hexRadius;
     const zStep = 1.5 * hexRadius;
@@ -1760,34 +1760,39 @@ tailwind.config = {
     base.position.y = -0.08;
     group.add(base);
 
-    const cellGeometry = new THREE.CylinderGeometry(cellRadius, cellRadius, hexHeight, 6);
+    const hexPoints2d = Array.from({ length: 6 }, (_, cornerIndex) => {
+      const angle = Math.PI / 6 + cornerIndex * (Math.PI / 3);
+      return new THREE.Vector2(
+        Math.cos(angle) * cellRadius,
+        Math.sin(angle) * cellRadius
+      );
+    });
+    const hexShape = new THREE.Shape(hexPoints2d);
+    const cellGeometry = new THREE.ShapeGeometry(hexShape);
+    const outlinePoints = hexPoints2d.map((point) => new THREE.Vector3(point.x, 0, point.y));
+    outlinePoints.push(outlinePoints[0].clone());
+    const outlineGeometry = new THREE.BufferGeometry().setFromPoints(outlinePoints);
     const cells = [];
     const cellIndexByKey = new Map();
 
     layout.forEach(({ row, col, q, r, x, z }) => {
       const material = new THREE.MeshBasicMaterial({
         color: 0xc27834,
-        transparent: false
+        transparent: false,
+        side: THREE.DoubleSide
       });
       const mesh = new THREE.Mesh(cellGeometry, material);
-      mesh.rotation.y = Math.PI / 6;
+      mesh.rotation.x = -Math.PI / 2;
       mesh.position.set(x, 0.01, z);
       mesh.userData.cellIndex = cells.length;
       group.add(mesh);
 
-      const corners = Array.from({ length: 6 }, (_, cornerIndex) => {
-        const angle = Math.PI / 6 + cornerIndex * (Math.PI / 3);
-        return new THREE.Vector3(
-          x + Math.cos(angle) * cellRadius,
-          0.03,
-          z + Math.sin(angle) * cellRadius
-        );
-      });
-      const outlineGeometry = new THREE.BufferGeometry().setFromPoints([...corners, corners[0]]);
       const outline = new THREE.Line(
         outlineGeometry,
-        new THREE.LineBasicMaterial({ color: 0x1c0d04, transparent: true, opacity: 0.95 })
+        new THREE.LineBasicMaterial({ color: 0x140a03, transparent: true, opacity: 1 })
       );
+      outline.rotation.x = -Math.PI / 2;
+      outline.position.set(x, 0.03, z);
       group.add(outline);
 
       cells.push({ row, col, q, r, mesh, material, cellId: makeConfigCellId(row, col), state: 'proof', baseOpacity: 1, pulseOffset: 0 });
