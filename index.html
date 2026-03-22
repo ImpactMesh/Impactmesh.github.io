@@ -1019,7 +1019,8 @@ tailwind.config = {
     }
 
     if (mode === '2d-hexagonal') {
-      prepareHexagonalConfiguration(false);
+      if (!hexagonalState) prepareHexagonalConfiguration(false);
+      startHexagonalGrowth();
       return;
     }
 
@@ -1708,16 +1709,16 @@ tailwind.config = {
     configOrthoCamera.up.set(0, 0, -1);
     configOrthoCamera.lookAt(0, 0, 0);
 
-    const rows = 10;
-    const cols = 11;
-    const occupiedRowStart = 2;
-    const occupiedRowEnd = 7;
-    const occupiedColStart = 2;
-    const occupiedColEnd = 8;
+    const rows = 14;
+    const cols = 14;
     const hexRadius = 0.58;
     const cellRadius = hexRadius * 0.9;
     const xStep = Math.sqrt(3) * hexRadius;
     const zStep = 1.5 * hexRadius;
+    const centerRow = Math.floor(rows / 2);
+    const centerCol = Math.floor(cols / 2);
+    const centerQ = centerCol - ((centerRow - (centerRow & 1)) / 2);
+    const centerR = centerRow;
     const layout = [];
     let minX = Infinity;
     let maxX = -Infinity;
@@ -1729,16 +1730,9 @@ tailwind.config = {
       for (let col = 0; col < cols; col += 1) {
         const rawX = col * xStep + rowOffset;
         const rawZ = row * zStep;
-        const occupied = row >= occupiedRowStart && row <= occupiedRowEnd && col >= occupiedColStart && col <= occupiedColEnd;
-        layout.push({
-          row,
-          col,
-          q: col - ((row - (row & 1)) / 2),
-          r: row,
-          rawX,
-          rawZ,
-          occupied
-        });
+        const q = col - ((row - (row & 1)) / 2) - centerQ;
+        const r = row - centerR;
+        layout.push({ row, col, q, r, rawX, rawZ });
         minX = Math.min(minX, rawX);
         maxX = Math.max(maxX, rawX);
         minZ = Math.min(minZ, rawZ);
@@ -1777,11 +1771,11 @@ tailwind.config = {
     const cells = [];
     const cellIndexByKey = new Map();
 
-    layout.forEach(({ row, col, q, r, x, z, occupied }) => {
+    layout.forEach(({ row, col, q, r, x, z }) => {
       const material = new THREE.MeshBasicMaterial({
-        color: occupied ? 0xc27834 : 0x1b1008,
+        color: 0x241108,
         transparent: true,
-        opacity: occupied ? 0.96 : 0.55,
+        opacity: 0.28,
         side: THREE.DoubleSide
       });
       const mesh = new THREE.Mesh(cellGeometry, material);
@@ -1790,7 +1784,7 @@ tailwind.config = {
       mesh.userData.cellIndex = cells.length;
       group.add(mesh);
 
-      cells.push({ row, col, q, r, mesh, material, occupied, cellId: makeConfigCellId(row, col), state: occupied ? 'proof' : 'empty', baseOpacity: occupied ? 0.96 : 0.55, pulseOffset: 0 });
+      cells.push({ row, col, q, r, mesh, material, cellId: makeConfigCellId(row, col), state: 'dead', baseOpacity: 0.28, pulseOffset: Math.random() * Math.PI * 2 });
       cellIndexByKey.set(`${q},${r}`, cells.length - 1);
     });
 
@@ -1806,8 +1800,8 @@ tailwind.config = {
       regionOverlayGroup: null,
       regions: [],
       running: false,
-      phase: 'proof',
-      alive: new Set(cells.flatMap((cell, index) => (cell.occupied ? [index] : []))),
+      phase: 'idle',
+      alive: new Set(),
       latest: new Set(),
       seedIndex: null,
       shardLabelIndex: null,
@@ -1817,24 +1811,26 @@ tailwind.config = {
       orbitRadius: 0,
       orbitHeight: 0,
       orbitSpeed: 0,
-      maxAlive: 0
+      maxAlive: 46
     };
 
     hideOverlayLabel(configCellLabel);
     hideOverlayLabel(configShardLabel);
     hideOverlayLabel(configHoverLabel);
     configRegionLabels.forEach(hideOverlayLabel);
-    configStageCaption.textContent = 'HEXAGONAL PACKING // ODD-R POINTY-TOP';
+    configStageCaption.textContent = 'HEXAGONAL GRID // CLICK TO INITIATE';
     renderConfigScene();
+
+    if (autoStart) startHexagonalGrowth();
   }
 
   function resetHexagonalCells() {
     if (!hexagonalState) return;
     hexagonalState.cells.forEach((cell) => {
       cell.state = 'dead';
-      cell.baseOpacity = 0.14;
-      cell.material.color.setHex(0x130804);
-      cell.material.opacity = 0.14;
+      cell.baseOpacity = 0.28;
+      cell.material.color.setHex(0x241108);
+      cell.material.opacity = 0.28;
     });
   }
 
@@ -1846,8 +1842,8 @@ tailwind.config = {
     cell.state = state;
 
     if (state === 'dead') {
-      cell.baseOpacity = 0.14;
-      cell.material.color.setHex(0x130804);
+      cell.baseOpacity = 0.28;
+      cell.material.color.setHex(0x241108);
       cell.material.opacity = cell.baseOpacity;
       return;
     }
@@ -2122,14 +2118,13 @@ tailwind.config = {
     }
 
     resetHexagonalCells();
-    hexagonalState.regions.forEach((region) => {
-      clearHexagonalRegionLines(region);
-      hideOverlayLabel(region.label);
-    });
+    configRegionLabels.forEach(hideOverlayLabel);
 
+    const centerRow = Math.floor(hexagonalState.rows / 2);
+    const centerCol = Math.floor(hexagonalState.cols / 2);
     const seedCandidates = hexagonalState.cells
       .map((cell, index) => ({ cell, index }))
-      .filter(({ cell }) => Math.abs(cell.q) <= 1 && Math.abs(cell.r) <= 1);
+      .filter(({ cell }) => Math.abs(cell.row - centerRow) <= 1 && Math.abs(cell.col - centerCol) <= 1);
     const seedPick = seedCandidates[randomInt(0, seedCandidates.length - 1)] || { index: Math.floor(hexagonalState.cells.length / 2), cell: hexagonalState.cells[Math.floor(hexagonalState.cells.length / 2)] };
     const seedIndex = seedPick.index;
     const seedCell = hexagonalState.cells[seedIndex];
@@ -2140,7 +2135,7 @@ tailwind.config = {
     hexagonalState.latest = new Set([seedIndex]);
     hexagonalState.seedIndex = seedIndex;
     hexagonalState.shardLabelIndex = null;
-    hexagonalState.regions = createHexagonalRegions();
+    hexagonalState.regions = [];
     hexagonalState.startedAt = performance.now() * 0.001;
     hexagonalState.lastGrowthAt = hexagonalState.startedAt;
     hexagonalState.growthStep = 0;
@@ -2150,8 +2145,7 @@ tailwind.config = {
     styleOverlayTag(configShardLabel, 0xffa347);
     showOverlayLabel(configCellLabel, 'STEM CELL', seedCell.mesh.position);
     hideOverlayLabel(configShardLabel);
-    updateHexagonalRegions();
-    configStageCaption.textContent = 'HEXAGONAL SURFACE // STEM CELL INITIALIZING';
+    configStageCaption.textContent = 'HEXAGONAL GRID // STEM CELL INITIALIZING';
     renderConfigScene();
   }
 
@@ -2227,8 +2221,7 @@ tailwind.config = {
     hexagonalState.latest = nextFrontier;
     hexagonalState.growthStep += 1;
     updateHexagonalShardLabel();
-    updateHexagonalRegions();
-    configStageCaption.textContent = `HEXAGONAL SURFACE // GROWTH WAVE ${String(hexagonalState.growthStep).padStart(2, '0')}`;
+    configStageCaption.textContent = `HEXAGONAL GRID // GROWTH WAVE ${String(hexagonalState.growthStep).padStart(2, '0')}`;
 
     if (hexagonalState.alive.size >= hexagonalState.maxAlive || hexagonalState.growthStep >= 15) {
       hexagonalState.alive.forEach((index) => {
@@ -2253,7 +2246,7 @@ tailwind.config = {
         hexagonalState.phase = 'grow';
         setHexagonalCellState(seedIndex, 'stem-bright');
         hexagonalState.lastGrowthAt = time;
-        configStageCaption.textContent = 'HEXAGONAL SURFACE // FIRST DIVISION';
+        configStageCaption.textContent = 'HEXAGONAL GRID // FIRST DIVISION';
       }
     } else {
       const seedCell = hexagonalState.cells[seedIndex];
@@ -2266,8 +2259,6 @@ tailwind.config = {
       }
     }
 
-    updateHexagonalCameraOrbit(time);
-    updateHexagonalRegionPulse(time);
     updatePulsingOverlayLabel(configCellLabel, time, { phase: 0, speed: 1.8, scaleAmplitude: 0.035, opacityBase: 0.86, opacityAmplitude: 0.12, glow: 20 });
     updatePulsingOverlayLabel(configShardLabel, time, { phase: 1.2, speed: 1.5, scaleAmplitude: 0.025, opacityBase: 0.82, opacityAmplitude: 0.12, glow: 16 });
     updatePulsingOverlayLabel(configHoverLabel, time, { phase: 0.5, speed: 1.9, scaleAmplitude: 0.018, opacityBase: 0.86, opacityAmplitude: 0.08, glow: 14 });
