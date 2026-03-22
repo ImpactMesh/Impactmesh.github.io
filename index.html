@@ -1704,10 +1704,7 @@ tailwind.config = {
     clearConfigGroup();
 
     configSelectedMode = '2d-hexagonal';
-    configActiveCamera = configOrthoCamera;
-    configOrthoCamera.position.set(0, 12, 0.001);
-    configOrthoCamera.up.set(0, 0, -1);
-    configOrthoCamera.lookAt(0, 0, 0);
+    configActiveCamera = configPerspectiveCamera;
 
     const rows = 14;
     const cols = 14;
@@ -1808,9 +1805,9 @@ tailwind.config = {
       startedAt: 0,
       lastGrowthAt: 0,
       growthStep: 0,
-      orbitRadius: 0,
-      orbitHeight: 0,
-      orbitSpeed: 0,
+      orbitRadius: Math.max(boardWidth, boardHeight) * 0.86,
+      orbitHeight: Math.max(boardWidth, boardHeight) * 0.62,
+      orbitSpeed: 0.12,
       maxAlive: 46
     };
 
@@ -1818,7 +1815,7 @@ tailwind.config = {
     hideOverlayLabel(configShardLabel);
     hideOverlayLabel(configHoverLabel);
     configRegionLabels.forEach(hideOverlayLabel);
-    configStageCaption.textContent = 'HEXAGONAL GRID // CLICK TO INITIATE';
+    configStageCaption.textContent = 'HEXAGONAL SURFACE // CLICK TO INITIATE';
     renderConfigScene();
 
     if (autoStart) startHexagonalGrowth();
@@ -2103,10 +2100,11 @@ tailwind.config = {
 
   function updateHexagonalCameraOrbit(time) {
     if (!hexagonalState || configActiveCamera !== configPerspectiveCamera) return;
+    const angle = time * hexagonalState.orbitSpeed;
     configPerspectiveCamera.position.set(
-      hexagonalState.orbitRadius * 0.08,
+      Math.cos(angle) * hexagonalState.orbitRadius,
       hexagonalState.orbitHeight,
-      hexagonalState.orbitRadius * 1.08
+      Math.sin(angle) * hexagonalState.orbitRadius * 0.82
     );
     configPerspectiveCamera.lookAt(0, 0, 0);
   }
@@ -2145,7 +2143,7 @@ tailwind.config = {
     styleOverlayTag(configShardLabel, 0xffa347);
     showOverlayLabel(configCellLabel, 'STEM CELL', seedCell.mesh.position);
     hideOverlayLabel(configShardLabel);
-    configStageCaption.textContent = 'HEXAGONAL GRID // STEM CELL INITIALIZING';
+    configStageCaption.textContent = 'HEXAGONAL SURFACE // STEM CELL INITIALIZING';
     renderConfigScene();
   }
 
@@ -2221,7 +2219,7 @@ tailwind.config = {
     hexagonalState.latest = nextFrontier;
     hexagonalState.growthStep += 1;
     updateHexagonalShardLabel();
-    configStageCaption.textContent = `HEXAGONAL GRID // GROWTH WAVE ${String(hexagonalState.growthStep).padStart(2, '0')}`;
+    configStageCaption.textContent = `HEXAGONAL SURFACE // GROWTH WAVE ${String(hexagonalState.growthStep).padStart(2, '0')}`;
 
     if (hexagonalState.alive.size >= hexagonalState.maxAlive || hexagonalState.growthStep >= 15) {
       hexagonalState.alive.forEach((index) => {
@@ -2246,7 +2244,7 @@ tailwind.config = {
         hexagonalState.phase = 'grow';
         setHexagonalCellState(seedIndex, 'stem-bright');
         hexagonalState.lastGrowthAt = time;
-        configStageCaption.textContent = 'HEXAGONAL GRID // FIRST DIVISION';
+        configStageCaption.textContent = 'HEXAGONAL SURFACE // FIRST DIVISION';
       }
     } else {
       const seedCell = hexagonalState.cells[seedIndex];
@@ -2259,6 +2257,7 @@ tailwind.config = {
       }
     }
 
+    updateHexagonalCameraOrbit(time);
     updatePulsingOverlayLabel(configCellLabel, time, { phase: 0, speed: 1.8, scaleAmplitude: 0.035, opacityBase: 0.86, opacityAmplitude: 0.12, glow: 20 });
     updatePulsingOverlayLabel(configShardLabel, time, { phase: 1.2, speed: 1.5, scaleAmplitude: 0.025, opacityBase: 0.82, opacityAmplitude: 0.12, glow: 16 });
     updatePulsingOverlayLabel(configHoverLabel, time, { phase: 0.5, speed: 1.9, scaleAmplitude: 0.018, opacityBase: 0.86, opacityAmplitude: 0.08, glow: 14 });
