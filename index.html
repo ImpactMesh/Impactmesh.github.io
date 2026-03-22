@@ -1756,6 +1756,9 @@ tailwind.config = {
     base.position.y = -0.08;
     group.add(base);
 
+    const regionOverlayGroup = new THREE.Group();
+    group.add(regionOverlayGroup);
+
     const hexPoints2d = Array.from({ length: 6 }, (_, cornerIndex) => {
       const angle = Math.PI / 6 + cornerIndex * (Math.PI / 3);
       return new THREE.Vector2(
@@ -1794,7 +1797,7 @@ tailwind.config = {
       cellRadius,
       cells,
       cellIndexByKey,
-      regionOverlayGroup: null,
+      regionOverlayGroup,
       regions: [],
       running: false,
       phase: 'idle',
@@ -2116,7 +2119,10 @@ tailwind.config = {
     }
 
     resetHexagonalCells();
-    configRegionLabels.forEach(hideOverlayLabel);
+    hexagonalState.regions.forEach((region) => {
+      clearHexagonalRegionLines(region);
+      hideOverlayLabel(region.label);
+    });
 
     const centerRow = Math.floor(hexagonalState.rows / 2);
     const centerCol = Math.floor(hexagonalState.cols / 2);
@@ -2133,7 +2139,7 @@ tailwind.config = {
     hexagonalState.latest = new Set([seedIndex]);
     hexagonalState.seedIndex = seedIndex;
     hexagonalState.shardLabelIndex = null;
-    hexagonalState.regions = [];
+    hexagonalState.regions = createHexagonalRegions();
     hexagonalState.startedAt = performance.now() * 0.001;
     hexagonalState.lastGrowthAt = hexagonalState.startedAt;
     hexagonalState.growthStep = 0;
@@ -2143,6 +2149,7 @@ tailwind.config = {
     styleOverlayTag(configShardLabel, 0xffa347);
     showOverlayLabel(configCellLabel, 'STEM CELL', seedCell.mesh.position);
     hideOverlayLabel(configShardLabel);
+    updateHexagonalRegions();
     configStageCaption.textContent = 'HEXAGONAL SURFACE // STEM CELL INITIALIZING';
     renderConfigScene();
   }
@@ -2219,6 +2226,7 @@ tailwind.config = {
     hexagonalState.latest = nextFrontier;
     hexagonalState.growthStep += 1;
     updateHexagonalShardLabel();
+    updateHexagonalRegions();
     configStageCaption.textContent = `HEXAGONAL SURFACE // GROWTH WAVE ${String(hexagonalState.growthStep).padStart(2, '0')}`;
 
     if (hexagonalState.alive.size >= hexagonalState.maxAlive || hexagonalState.growthStep >= 15) {
@@ -2258,6 +2266,7 @@ tailwind.config = {
     }
 
     updateHexagonalCameraOrbit(time);
+    updateHexagonalRegionPulse(time);
     updatePulsingOverlayLabel(configCellLabel, time, { phase: 0, speed: 1.8, scaleAmplitude: 0.035, opacityBase: 0.86, opacityAmplitude: 0.12, glow: 20 });
     updatePulsingOverlayLabel(configShardLabel, time, { phase: 1.2, speed: 1.5, scaleAmplitude: 0.025, opacityBase: 0.82, opacityAmplitude: 0.12, glow: 16 });
     updatePulsingOverlayLabel(configHoverLabel, time, { phase: 0.5, speed: 1.9, scaleAmplitude: 0.018, opacityBase: 0.86, opacityAmplitude: 0.08, glow: 14 });
