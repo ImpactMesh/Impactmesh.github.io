@@ -1019,8 +1019,7 @@ tailwind.config = {
     }
 
     if (mode === '2d-hexagonal') {
-      if (!hexagonalState) prepareHexagonalConfiguration(false);
-      startHexagonalGrowth();
+      prepareHexagonalConfiguration(false);
       return;
     }
 
@@ -1704,19 +1703,18 @@ tailwind.config = {
     clearConfigGroup();
 
     configSelectedMode = '2d-hexagonal';
-    configActiveCamera = configPerspectiveCamera;
+    configActiveCamera = configOrthoCamera;
+    configOrthoCamera.position.set(0, 12, 0.001);
+    configOrthoCamera.up.set(0, 0, -1);
+    configOrthoCamera.lookAt(0, 0, 0);
 
-    const rows = 11;
-    const cols = 11;
+    const rows = 9;
+    const cols = 9;
     const hexRadius = 0.52;
-    const cellRadius = hexRadius;
+    const cellRadius = hexRadius * 0.96;
     const hexHeight = 0.02;
     const xStep = Math.sqrt(3) * hexRadius;
     const zStep = 1.5 * hexRadius;
-    const centerRow = Math.floor(rows / 2);
-    const centerCol = Math.floor(cols / 2);
-    const centerQ = centerCol - Math.floor((centerRow - (centerRow & 1)) / 2);
-    const centerR = centerRow;
     const layout = [];
     let minX = Infinity;
     let maxX = -Infinity;
@@ -1728,9 +1726,7 @@ tailwind.config = {
       for (let col = 0; col < cols; col += 1) {
         const rawX = col * xStep + rowOffset;
         const rawZ = row * zStep;
-        const q = col - Math.floor((row - (row & 1)) / 2) - centerQ;
-        const r = row - centerR;
-        layout.push({ row, col, q, r, rawX, rawZ });
+        layout.push({ row, col, rawX, rawZ });
         minX = Math.min(minX, rawX);
         maxX = Math.max(maxX, rawX);
         minZ = Math.min(minZ, rawZ);
@@ -1743,14 +1739,16 @@ tailwind.config = {
     layout.forEach((cell) => {
       cell.x = cell.rawX - centerX;
       cell.z = cell.rawZ - centerZ;
+      cell.q = cell.col - Math.floor((cell.row - (cell.row & 1)) / 2);
+      cell.r = cell.row;
     });
 
-    const boardWidth = (maxX - minX) + hexRadius * 4.0;
-    const boardHeight = (maxZ - minZ) + hexRadius * 4.2;
+    const boardWidth = (maxX - minX) + hexRadius * 3.8;
+    const boardHeight = (maxZ - minZ) + hexRadius * 3.8;
     const group = new THREE.Group();
 
     const base = new THREE.Mesh(
-      new THREE.PlaneGeometry(boardWidth + 1.8, boardHeight + 1.8),
+      new THREE.PlaneGeometry(boardWidth + 1.2, boardHeight + 1.2),
       new THREE.MeshBasicMaterial({ color: 0x090909 })
     );
     base.rotation.x = -Math.PI / 2;
@@ -1758,8 +1756,8 @@ tailwind.config = {
     group.add(base);
 
     const border = new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.BoxGeometry(boardWidth + 0.5, 0.02, boardHeight + 0.5)),
-      new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.18 })
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(boardWidth + 0.25, 0.02, boardHeight + 0.25)),
+      new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.16 })
     );
     border.position.y = -0.01;
     group.add(border);
@@ -1773,21 +1771,28 @@ tailwind.config = {
 
     layout.forEach(({ row, col, q, r, x, z }) => {
       const material = new THREE.MeshBasicMaterial({
-        color: 0x130804,
+        color: 0xb46d2f,
         transparent: true,
-        opacity: 0.14
+        opacity: 0.38
       });
       const mesh = new THREE.Mesh(cellGeometry, material);
       mesh.rotation.y = Math.PI / 6;
       mesh.position.set(x, 0.01, z);
       mesh.userData.cellIndex = cells.length;
       group.add(mesh);
-      cells.push({ row, col, q, r, mesh, material, cellId: makeConfigCellId(row, col), state: 'dead', baseOpacity: 0.14, pulseOffset: Math.random() * Math.PI * 2 });
+      cells.push({ row, col, q, r, mesh, material, cellId: makeConfigCellId(row, col), state: 'dead', baseOpacity: 0.38, pulseOffset: 0 });
       cellIndexByKey.set(`${q},${r}`, cells.length - 1);
     });
 
     const latticeGroup = new THREE.Group();
     group.add(latticeGroup);
+    const latticeEdges = collectHexagonalEdges(cells, hexRadius, false);
+    addHexEdgeMeshes(latticeGroup, latticeEdges, {
+      color: 0xffa347,
+      opacity: 0.62,
+      lineThickness: hexRadius * 0.035,
+      lineHeight: 0.03
+    });
 
     configScene.add(group);
     configCurrentGroup = group;
@@ -1801,7 +1806,7 @@ tailwind.config = {
       regionOverlayGroup,
       regions: [],
       running: false,
-      phase: 'idle',
+      phase: 'proof',
       alive: new Set(),
       latest: new Set(),
       seedIndex: null,
@@ -1809,23 +1814,18 @@ tailwind.config = {
       startedAt: 0,
       lastGrowthAt: 0,
       growthStep: 0,
-      orbitRadius: Math.max(boardWidth, boardHeight) * 0.76,
-      orbitHeight: Math.max(boardWidth, boardHeight) * 0.56,
-      orbitSpeed: 0.12,
-      maxAlive: 48
+      orbitRadius: 0,
+      orbitHeight: 0,
+      orbitSpeed: 0,
+      maxAlive: 0
     };
 
-    const latticeEdges = collectHexagonalEdges(cells, hexRadius, false);
-    addHexEdgeMeshes(latticeGroup, latticeEdges, {
-      color: 0x5a2408,
-      opacity: 0.34,
-      lineThickness: hexRadius * 0.045,
-      lineHeight: -0.02
-    });
-
+    hideOverlayLabel(configCellLabel);
+    hideOverlayLabel(configShardLabel);
+    hideOverlayLabel(configHoverLabel);
+    configRegionLabels.forEach(hideOverlayLabel);
+    configStageCaption.textContent = 'HEXAGONAL PACKING // VERIFICATION';
     renderConfigScene();
-
-    if (autoStart) startHexagonalGrowth();
   }
 
   function resetHexagonalCells() {
