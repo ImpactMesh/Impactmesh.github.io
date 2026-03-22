@@ -1708,11 +1708,14 @@ tailwind.config = {
     configOrthoCamera.up.set(0, 0, -1);
     configOrthoCamera.lookAt(0, 0, 0);
 
-    const rows = 6;
-    const cols = 7;
+    const rows = 8;
+    const cols = 9;
+    const occupiedRowStart = 1;
+    const occupiedRowEnd = 6;
+    const occupiedColStart = 1;
+    const occupiedColEnd = 7;
     const hexRadius = 0.58;
     const cellRadius = hexRadius * 0.9;
-    const hexHeight = 0.02;
     const xStep = Math.sqrt(3) * hexRadius;
     const zStep = 1.5 * hexRadius;
     const layout = [];
@@ -1726,13 +1729,15 @@ tailwind.config = {
       for (let col = 0; col < cols; col += 1) {
         const rawX = col * xStep + rowOffset;
         const rawZ = row * zStep;
+        const occupied = row >= occupiedRowStart && row <= occupiedRowEnd && col >= occupiedColStart && col <= occupiedColEnd;
         layout.push({
           row,
           col,
           q: col - ((row - (row & 1)) / 2),
           r: row,
           rawX,
-          rawZ
+          rawZ,
+          occupied
         });
         minX = Math.min(minX, rawX);
         maxX = Math.max(maxX, rawX);
@@ -1769,16 +1774,14 @@ tailwind.config = {
     });
     const hexShape = new THREE.Shape(hexPoints2d);
     const cellGeometry = new THREE.ShapeGeometry(hexShape);
-    const outlinePoints = hexPoints2d.map((point) => new THREE.Vector3(point.x, 0, point.y));
-    outlinePoints.push(outlinePoints[0].clone());
-    const outlineGeometry = new THREE.BufferGeometry().setFromPoints(outlinePoints);
     const cells = [];
     const cellIndexByKey = new Map();
 
-    layout.forEach(({ row, col, q, r, x, z }) => {
+    layout.forEach(({ row, col, q, r, x, z, occupied }) => {
       const material = new THREE.MeshBasicMaterial({
-        color: 0xc27834,
-        transparent: false,
+        color: occupied ? 0xc27834 : 0x1b1008,
+        transparent: true,
+        opacity: occupied ? 0.96 : 0.55,
         side: THREE.DoubleSide
       });
       const mesh = new THREE.Mesh(cellGeometry, material);
@@ -1787,15 +1790,7 @@ tailwind.config = {
       mesh.userData.cellIndex = cells.length;
       group.add(mesh);
 
-      const outline = new THREE.Line(
-        outlineGeometry,
-        new THREE.LineBasicMaterial({ color: 0x140a03, transparent: true, opacity: 1 })
-      );
-      outline.rotation.x = -Math.PI / 2;
-      outline.position.set(x, 0.03, z);
-      group.add(outline);
-
-      cells.push({ row, col, q, r, mesh, material, cellId: makeConfigCellId(row, col), state: 'proof', baseOpacity: 1, pulseOffset: 0 });
+      cells.push({ row, col, q, r, mesh, material, occupied, cellId: makeConfigCellId(row, col), state: occupied ? 'proof' : 'empty', baseOpacity: occupied ? 0.96 : 0.55, pulseOffset: 0 });
       cellIndexByKey.set(`${q},${r}`, cells.length - 1);
     });
 
@@ -1812,7 +1807,7 @@ tailwind.config = {
       regions: [],
       running: false,
       phase: 'proof',
-      alive: new Set(),
+      alive: new Set(cells.flatMap((cell, index) => (cell.occupied ? [index] : []))),
       latest: new Set(),
       seedIndex: null,
       shardLabelIndex: null,
@@ -1829,7 +1824,7 @@ tailwind.config = {
     hideOverlayLabel(configShardLabel);
     hideOverlayLabel(configHoverLabel);
     configRegionLabels.forEach(hideOverlayLabel);
-    configStageCaption.textContent = 'HEXAGONAL PACKING // VERIFICATION';
+    configStageCaption.textContent = 'HEXAGONAL PACKING // ODD-R POINTY-TOP';
     renderConfigScene();
   }
 
