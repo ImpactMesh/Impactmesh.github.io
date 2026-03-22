@@ -1375,7 +1375,7 @@ tailwind.config = {
     orthogonalState.regions.forEach((region, index) => {
       const wave = Math.sin(time * 1.28 + index * 1.05);
       const pulse = 0.5 + wave * 0.5;
-      const lift = wave * 0.16;
+      const lift = wave * 0.05;
 
       region.pulseMaterials.forEach((material) => {
         material.opacity = 0.12 + pulse * 0.88;
