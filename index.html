@@ -708,7 +708,21 @@ tailwind.config = {
         <button aria-label="Close configurations" class="text-primary text-4xl md:text-5xl leading-none font-black hover:text-tertiary transition-colors" onclick="closeConfigOverlay()">×</button>
       </div>
       <div class="flex-1 min-h-0 p-4 md:p-6">
-        <div id="config-three-stage" class="relative h-full w-full border border-primary/20 bg-[#050505]"></div>
+        <div class="h-full grid grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] gap-4 md:gap-6">
+          <aside class="border border-primary/20 bg-black/35 p-4 md:p-5 flex flex-col">
+            <div class="text-[10px] text-tertiary tracking-[0.35em] font-bold yellow-bloom">CONFIGURATION SET</div>
+            <div class="text-primary/55 text-[10px] tracking-[0.24em] font-mono mt-2">SELECT A SPATIAL STRUCTURE</div>
+            <div class="mt-5 space-y-3">
+              <button type="button" class="w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom">2D RETICULAR GRID</button>
+              <button type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all">2D HEXAGONAL GRID</button>
+              <button type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all">2D AREAS</button>
+              <button type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all">3D RETICULAR</button>
+              <button type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all">3D HEXAGONAL STACKED</button>
+              <button type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all">3D HEXAGONAL OFFSET</button>
+            </div>
+          </aside>
+          <div id="config-three-stage" class="relative h-full min-h-[28rem] border border-primary/20 bg-[#050505]"></div>
+        </div>
       </div>
     </div>
   </div>
