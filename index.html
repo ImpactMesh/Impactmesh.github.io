@@ -1708,11 +1708,10 @@ tailwind.config = {
     configOrthoCamera.up.set(0, 0, -1);
     configOrthoCamera.lookAt(0, 0, 0);
 
-    const rowLengths = [7, 6, 7, 6, 7];
-    const rows = rowLengths.length;
-    const cols = Math.max(...rowLengths);
+    const rows = 6;
+    const cols = 7;
     const hexRadius = 0.58;
-    const cellRadius = hexRadius * 0.84;
+    const cellRadius = hexRadius;
     const hexHeight = 0.02;
     const xStep = Math.sqrt(3) * hexRadius;
     const zStep = 1.5 * hexRadius;
@@ -1722,24 +1721,39 @@ tailwind.config = {
     let minZ = Infinity;
     let maxZ = -Infinity;
 
-    rowLengths.forEach((length, row) => {
-      for (let col = 0; col < length; col += 1) {
-        const x = (col - (length - 1) / 2) * xStep;
-        const z = (row - (rows - 1) / 2) * zStep;
-        layout.push({ row, col, q: col - Math.floor(length / 2), r: row - Math.floor(rows / 2), x, z });
-        minX = Math.min(minX, x);
-        maxX = Math.max(maxX, x);
-        minZ = Math.min(minZ, z);
-        maxZ = Math.max(maxZ, z);
+    for (let row = 0; row < rows; row += 1) {
+      const rowOffset = (row & 1) * (xStep * 0.5);
+      for (let col = 0; col < cols; col += 1) {
+        const rawX = col * xStep + rowOffset;
+        const rawZ = row * zStep;
+        layout.push({
+          row,
+          col,
+          q: col - ((row - (row & 1)) / 2),
+          r: row,
+          rawX,
+          rawZ
+        });
+        minX = Math.min(minX, rawX);
+        maxX = Math.max(maxX, rawX);
+        minZ = Math.min(minZ, rawZ);
+        maxZ = Math.max(maxZ, rawZ);
       }
+    }
+
+    const centerX = (minX + maxX) * 0.5;
+    const centerZ = (minZ + maxZ) * 0.5;
+    layout.forEach((cell) => {
+      cell.x = cell.rawX - centerX;
+      cell.z = cell.rawZ - centerZ;
     });
 
-    const boardWidth = (maxX - minX) + hexRadius * 4.6;
-    const boardHeight = (maxZ - minZ) + hexRadius * 4.2;
+    const boardWidth = (maxX - minX) + hexRadius * 3.4;
+    const boardHeight = (maxZ - minZ) + hexRadius * 3.4;
     const group = new THREE.Group();
 
     const base = new THREE.Mesh(
-      new THREE.PlaneGeometry(boardWidth + 1.2, boardHeight + 1.2),
+      new THREE.PlaneGeometry(boardWidth + 1.0, boardHeight + 1.0),
       new THREE.MeshBasicMaterial({ color: 0x090909 })
     );
     base.rotation.x = -Math.PI / 2;
@@ -1753,16 +1767,31 @@ tailwind.config = {
     layout.forEach(({ row, col, q, r, x, z }) => {
       const material = new THREE.MeshBasicMaterial({
         color: 0xc27834,
-        transparent: true,
-        opacity: 0.82
+        transparent: false
       });
       const mesh = new THREE.Mesh(cellGeometry, material);
       mesh.rotation.y = Math.PI / 6;
       mesh.position.set(x, 0.01, z);
       mesh.userData.cellIndex = cells.length;
       group.add(mesh);
-      cells.push({ row, col, q, r, mesh, material, cellId: makeConfigCellId(row, col), state: 'proof', baseOpacity: 0.82, pulseOffset: 0 });
-      cellIndexByKey.set(`${row},${col}`, cells.length - 1);
+
+      const corners = Array.from({ length: 6 }, (_, cornerIndex) => {
+        const angle = Math.PI / 6 + cornerIndex * (Math.PI / 3);
+        return new THREE.Vector3(
+          x + Math.cos(angle) * cellRadius,
+          0.03,
+          z + Math.sin(angle) * cellRadius
+        );
+      });
+      const outlineGeometry = new THREE.BufferGeometry().setFromPoints([...corners, corners[0]]);
+      const outline = new THREE.Line(
+        outlineGeometry,
+        new THREE.LineBasicMaterial({ color: 0x1c0d04, transparent: true, opacity: 0.95 })
+      );
+      group.add(outline);
+
+      cells.push({ row, col, q, r, mesh, material, cellId: makeConfigCellId(row, col), state: 'proof', baseOpacity: 1, pulseOffset: 0 });
+      cellIndexByKey.set(`${q},${r}`, cells.length - 1);
     });
 
     configScene.add(group);
