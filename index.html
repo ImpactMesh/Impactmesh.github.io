@@ -726,6 +726,9 @@ tailwind.config = {
               <div id="config-stage-caption" class="absolute bottom-4 left-4 text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">2D TOP VIEW // STANDBY</div>
               <div id="config-cell-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-primary/40 bg-black/70 px-3 py-2 text-[10px] text-primary tracking-[0.28em] font-bold electric-bloom">STEM CELL</div>
               <div id="config-shard-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-tertiary/40 bg-black/70 px-3 py-2 text-[10px] text-tertiary tracking-[0.28em] font-bold yellow-bloom">SHARD CELL</div>
+              <div id="config-region-label-1" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-primary/40 bg-black/70 px-3 py-2 text-[10px] text-primary tracking-[0.22em] font-bold electric-bloom">SEQUENCER REGION 1</div>
+              <div id="config-region-label-2" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-tertiary/40 bg-black/70 px-3 py-2 text-[10px] text-tertiary tracking-[0.22em] font-bold yellow-bloom">SEQUENCER REGION 2</div>
+              <div id="config-region-label-3" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-secondary/40 bg-black/70 px-3 py-2 text-[10px] text-secondary tracking-[0.22em] font-bold">SEQUENCER REGION 3</div>
             </div>
           </div>
         </div>
@@ -770,6 +773,7 @@ tailwind.config = {
   let configStageCaption;
   let configCellLabel;
   let configShardLabel;
+  let configRegionLabels = [];
   let configAnimationStarted = false;
   let configCurrentGroup = null;
   let configSelectedMode = '2d-reticular';
@@ -836,6 +840,11 @@ tailwind.config = {
     configStageCaption = document.getElementById('config-stage-caption');
     configCellLabel = document.getElementById('config-cell-label');
     configShardLabel = document.getElementById('config-shard-label');
+    configRegionLabels = [
+      document.getElementById('config-region-label-1'),
+      document.getElementById('config-region-label-2'),
+      document.getElementById('config-region-label-3')
+    ];
 
     configRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     configRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -889,6 +898,7 @@ tailwind.config = {
 
     updateOverlayLabelPosition(configCellLabel);
     updateOverlayLabelPosition(configShardLabel);
+    configRegionLabels.forEach(updateOverlayLabelPosition);
   }
 
   function renderConfigScene() {
@@ -911,6 +921,7 @@ tailwind.config = {
     reticularState = null;
     hideOverlayLabel(configCellLabel);
     hideOverlayLabel(configShardLabel);
+    configRegionLabels.forEach(hideOverlayLabel);
   }
 
   function setConfigButtonState(mode) {
@@ -975,6 +986,28 @@ tailwind.config = {
     );
     border.position.y = -0.01;
     group.add(border);
+
+    const regionDefinitions = [
+      { label: configRegionLabels[0], text: 'SEQUENCER REGION 1', color: 0xff6600, centerX: -1.55, centerZ: -1.2, width: 4.6, height: 3.8 },
+      { label: configRegionLabels[1], text: 'SEQUENCER REGION 2', color: 0xffcc00, centerX: 0.2, centerZ: -0.35, width: 4.7, height: 3.6 },
+      { label: configRegionLabels[2], text: 'SEQUENCER REGION 3', color: 0xff3300, centerX: 1.7, centerZ: -1.15, width: 4.2, height: 3.4 }
+    ];
+
+    regionDefinitions.forEach((region) => {
+      const halfW = region.width / 2;
+      const halfH = region.height / 2;
+      const points = [
+        new THREE.Vector3(region.centerX - halfW, 0.04, region.centerZ - halfH),
+        new THREE.Vector3(region.centerX + halfW, 0.04, region.centerZ - halfH),
+        new THREE.Vector3(region.centerX + halfW, 0.04, region.centerZ + halfH),
+        new THREE.Vector3(region.centerX - halfW, 0.04, region.centerZ + halfH)
+      ];
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const material = new THREE.LineBasicMaterial({ color: region.color, transparent: true, opacity: 0.34 });
+      const line = new THREE.LineLoop(geometry, material);
+      group.add(line);
+      showOverlayLabel(region.label, region.text, new THREE.Vector3(region.centerX, 0.04, region.centerZ - halfH));
+    });
 
     const cellGeometry = new THREE.PlaneGeometry(cellSize, cellSize);
     const cells = [];
@@ -1136,9 +1169,10 @@ tailwind.config = {
 
     resetReticularCells();
 
-    const safeMargin = 3;
-    const seedRow = randomInt(safeMargin, reticularState.rows - safeMargin - 1);
-    const seedCol = randomInt(safeMargin, reticularState.cols - safeMargin - 1);
+    const centerRow = Math.floor(reticularState.rows / 2);
+    const centerCol = Math.floor(reticularState.cols / 2);
+    const seedRow = randomInt(centerRow - 1, centerRow + 1);
+    const seedCol = randomInt(centerCol - 1, centerCol + 1);
     const seedIndex = seedRow * reticularState.cols + seedCol;
     const seedCell = reticularState.cells[seedIndex];
 
@@ -1259,6 +1293,7 @@ tailwind.config = {
 
     updateOverlayLabelPosition(configCellLabel);
     updateOverlayLabelPosition(configShardLabel);
+    configRegionLabels.forEach(updateOverlayLabelPosition);
   }
 
   function animateConfigScene() {
