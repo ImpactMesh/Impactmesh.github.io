@@ -1343,6 +1343,22 @@ tailwind.config = {
     hideOverlayLabel(configHoverLabel);
   }
 
+  function updatePulsingOverlayLabel(element, time, options = {}) {
+    if (!element || element.classList.contains('hidden')) return;
+    const phase = options.phase || 0;
+    const scaleBase = options.scaleBase || 1;
+    const scaleAmplitude = options.scaleAmplitude || 0.03;
+    const opacityBase = options.opacityBase || 0.9;
+    const opacityAmplitude = options.opacityAmplitude || 0.1;
+    const glow = options.glow || 18;
+    const cssColor = element.style.color || '#ff6600';
+    const pulse = 0.5 + Math.sin(time * 3.2 + phase) * 0.5;
+    const scale = scaleBase + pulse * scaleAmplitude;
+    element.style.transform = `translate(-50%, -115%) scale(${scale.toFixed(3)})`;
+    element.style.opacity = String(Math.max(0.6, opacityBase + pulse * opacityAmplitude));
+    element.style.boxShadow = `0 0 ${Math.round(glow + pulse * 10)}px ${cssColor}44`;
+  }
+
   function handleConfigPointerMove(event) {
     if (!configRenderer || !configStage || !configRaycaster || !configActiveCamera || !orthogonalState?.cells?.length) return;
 
@@ -1368,7 +1384,12 @@ tailwind.config = {
 
     configHoveredCellIndex = cellIndex;
     styleOverlayTag(configHoverLabel, 0xffa347);
-    showOverlayLabel(configHoverLabel, `ID: ${cell.cellId}`, cell.mesh.position);
+    const labelPrefix = cellIndex === orthogonalState.seedIndex
+      ? 'STEM'
+      : orthogonalState.alive.has(cellIndex)
+        ? 'SHARD'
+        : 'CELL';
+    showOverlayLabel(configHoverLabel, `${labelPrefix} ID: ${cell.cellId}`, cell.mesh.position);
   }
 
   function styleRegionLabel(region) {
@@ -1546,10 +1567,20 @@ tailwind.config = {
         orthogonalState.lastGrowthAt = time;
         configStageCaption.textContent = '2D TOP VIEW // FIRST DIVISION';
       }
-    } else if (orthogonalState.running && time - orthogonalState.lastGrowthAt >= 0.24) {
-      orthogonalState.lastGrowthAt = time;
-      advanceOrthogonalGrowth();
+    } else {
+      const seedCell = orthogonalState.cells[seedIndex];
+      if (seedCell) {
+        seedCell.material.opacity = 0.86 + ((Math.sin(time * 4.8) + 1) * 0.06);
+      }
+      if (orthogonalState.running && time - orthogonalState.lastGrowthAt >= 0.24) {
+        orthogonalState.lastGrowthAt = time;
+        advanceOrthogonalGrowth();
+      }
     }
+
+    updatePulsingOverlayLabel(configCellLabel, time, { phase: 0, scaleAmplitude: 0.035, opacityBase: 0.86, opacityAmplitude: 0.12, glow: 20 });
+    updatePulsingOverlayLabel(configShardLabel, time, { phase: 1.2, scaleAmplitude: 0.025, opacityBase: 0.82, opacityAmplitude: 0.12, glow: 16 });
+    updatePulsingOverlayLabel(configHoverLabel, time, { phase: 0.5, scaleAmplitude: 0.018, opacityBase: 0.86, opacityAmplitude: 0.08, glow: 14 });
 
     updateOverlayLabelPosition(configCellLabel);
     updateOverlayLabelPosition(configShardLabel);
