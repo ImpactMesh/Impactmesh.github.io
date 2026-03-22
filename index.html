@@ -2096,34 +2096,130 @@ tailwind.config = {
     return edges;
   }
 
-  function addHexEdgeMeshes(targetGroup, edges, options = {}) {
+  function makeHexPointKey(point) {
+    return `${point.x.toFixed(4)},${point.z.toFixed(4)}`;
+  }
+
+  function buildHexEdgePaths(edges) {
+    if (!edges.length) return [];
+
+    const vertexMap = new Map();
+    const edgeRecords = edges.map((edge, index) => {
+      const startKey = makeHexPointKey(edge.start);
+      const endKey = makeHexPointKey(edge.end);
+      if (!vertexMap.has(startKey)) vertexMap.set(startKey, { point: edge.start, edges: [] });
+      if (!vertexMap.has(endKey)) vertexMap.set(endKey, { point: edge.end, edges: [] });
+      const record = { index, startKey, endKey, start: edge.start, end: edge.end, used: false };
+      vertexMap.get(startKey).edges.push(index);
+      vertexMap.get(endKey).edges.push(index);
+      return record;
+    });
+
+    function takeNextEdge(currentKey, previousEdgeIndex) {
+      const candidates = (vertexMap.get(currentKey)?.edges || []).filter((edgeIndex) => {
+        const record = edgeRecords[edgeIndex];
+        return !record.used && edgeIndex !== previousEdgeIndex;
+      });
+      return candidates.length ? candidates[0] : null;
+    }
+
+    function walkFrom(startKey, previousEdgeIndex, targetKey) {
+      const points = [];
+      let currentKey = startKey;
+      let previous = previousEdgeIndex;
+      let closed = false;
+
+      while (true) {
+        const nextEdgeIndex = takeNextEdge(currentKey, previous);
+        if (nextEdgeIndex === null) break;
+        const nextEdge = edgeRecords[nextEdgeIndex];
+        nextEdge.used = true;
+
+        const nextPoint = nextEdge.startKey === currentKey ? nextEdge.end : nextEdge.start;
+        currentKey = nextEdge.startKey === currentKey ? nextEdge.endKey : nextEdge.startKey;
+        previous = nextEdgeIndex;
+        points.push(nextPoint);
+
+        if (currentKey === targetKey) {
+          closed = true;
+          break;
+        }
+      }
+
+      return { points, closed };
+    }
+
+    const paths = [];
+
+    edgeRecords.forEach((seedEdge) => {
+      if (seedEdge.used) return;
+      seedEdge.used = true;
+
+      const forward = walkFrom(seedEdge.endKey, seedEdge.index, seedEdge.startKey);
+      if (forward.closed) {
+        paths.push({ points: [seedEdge.start, seedEdge.end, ...forward.points], closed: true });
+        return;
+      }
+
+      const backward = walkFrom(seedEdge.startKey, seedEdge.index, seedEdge.endKey);
+      if (backward.closed) {
+        paths.push({ points: [seedEdge.end, seedEdge.start, ...backward.points], closed: true });
+        return;
+      }
+
+      paths.push({
+        points: [...backward.points.reverse(), seedEdge.start, seedEdge.end, ...forward.points],
+        closed: false
+      });
+    });
+
+    return paths;
+  }
+
+  function buildHexSvgPathData(points, y, closed) {
+    if (!points.length) return '';
+    const projected = points.map((point) => projectConfigPointToStage(point.x, y, point.z));
+    if (projected.some((point) => !point)) return '';
+
+    let d = `M ${projected[0].x} ${projected[0].y}`;
+    for (let i = 1; i < projected.length; i += 1) {
+      d += ` L ${projected[i].x} ${projected[i].y}`;
+    }
+    if (closed) d += ' Z';
+    return d;
+  }
+
+  function addHexEdgeMeshes(targetGroup, edgePaths, options = {}) {
     const lineHeight = options.lineHeight ?? 0;
     const opacity = options.opacity ?? 0.88;
     const color = options.color ?? 0xff6600;
     const lineThickness = options.lineThickness ?? 4.5;
-    if (!edges.length || !configRegionSvg) return { meshes: [], materials: [] };
+    if (!edgePaths.length || !configRegionSvg) return { meshes: [], materials: [] };
 
-    const svgLines = edges.map(({ start, end }) => {
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('stroke', `#${color.toString(16).padStart(6, '0')}`);
-      line.setAttribute('stroke-width', String(lineThickness));
-      line.setAttribute('stroke-opacity', String(opacity));
-      line.setAttribute('stroke-linecap', 'butt');
-      line.setAttribute('vector-effect', 'non-scaling-stroke');
-      line.dataset.baseY = String(lineHeight);
-      line.__edgeData = { start, end };
-      configRegionSvg.appendChild(line);
-      return line;
+    const svgPaths = edgePaths.map((edgePath) => {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', `#${color.toString(16).padStart(6, '0')}`);
+      path.setAttribute('stroke-width', String(lineThickness));
+      path.setAttribute('stroke-opacity', String(opacity));
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+      path.setAttribute('vector-effect', 'non-scaling-stroke');
+      path.dataset.baseY = String(lineHeight);
+      path.__pathData = edgePath;
+      configRegionSvg.appendChild(path);
+      return path;
     });
 
-    return { meshes: svgLines, materials: svgLines };
+    return { meshes: svgPaths, materials: svgPaths };
   }
 
   function buildHexagonalRegionOutlineMeshes(region, memberIndexes) {
     if (!hexagonalState || !memberIndexes.length) return [];
 
     const edges = collectHexagonalEdges(memberIndexes);
-    const { meshes, materials } = addHexEdgeMeshes(hexagonalState.regionOverlayGroup, edges, {
+    const edgePaths = buildHexEdgePaths(edges);
+    const { meshes, materials } = addHexEdgeMeshes(hexagonalState.regionOverlayGroup, edgePaths, {
       color: region.color,
       opacity: 0.88,
       lineHeight: region.lineHeight,
@@ -2169,26 +2265,19 @@ tailwind.config = {
       const wave = Math.sin(time * 1.92 + index * 1.05);
       const pulse = 0.5 + wave * 0.5;
       const lift = wave * 0.05;
+      const y = region.lineHeight + lift;
 
-      region.pulseMaterials.forEach((line) => {
-        if (line?.setAttribute) {
-          line.setAttribute('stroke-opacity', String(0.12 + pulse * 0.88));
-        } else if (line) {
-          line.opacity = 0.12 + pulse * 0.88;
+      region.pulseMaterials.forEach((path) => {
+        if (path?.setAttribute) {
+          path.setAttribute('stroke-opacity', String(0.12 + pulse * 0.88));
         }
       });
 
-      region.lines.forEach((line) => {
-        const edge = line?.__edgeData;
-        if (!edge) return;
-        const y = region.lineHeight + lift;
-        const start = projectConfigPointToStage(edge.start.x, y, edge.start.z);
-        const end = projectConfigPointToStage(edge.end.x, y, edge.end.z);
-        if (!start || !end) return;
-        line.setAttribute('x1', String(start.x));
-        line.setAttribute('y1', String(start.y));
-        line.setAttribute('x2', String(end.x));
-        line.setAttribute('y2', String(end.y));
+      region.lines.forEach((path) => {
+        const pathData = path?.__pathData;
+        if (!pathData) return;
+        const d = buildHexSvgPathData(pathData.points, y, pathData.closed);
+        if (d) path.setAttribute('d', d);
       });
     });
   }
