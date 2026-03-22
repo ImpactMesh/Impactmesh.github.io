@@ -442,7 +442,7 @@ tailwind.config = {
         </div>
         <span class="font-headline font-black text-primary/40 text-[8px] tracking-[1em] absolute top-4 uppercase">GEOMETRIC_SHARDING</span>
         <div class="relative z-10 text-center">
-          <span class="material-symbols-outlined text-primary text-5xl mb-4">polymer</span>
+          <span class="material-symbols-outlined text-primary text-5xl mb-4">toll</span>
           <div class="h-1 w-12 bg-primary mx-auto mb-4"></div>
           <p class="font-label text-lg tracking-widest text-zinc-400 uppercase font-light">REAL ECONOMY</p>
         </div>
@@ -468,7 +468,7 @@ tailwind.config = {
         </div>
         <span class="font-headline font-black text-primary/40 text-[8px] tracking-[1em] absolute bottom-4 uppercase">DATA_ROUTING</span>
         <div class="relative z-10 text-center">
-          <span class="material-symbols-outlined text-primary text-5xl mb-4">view_in_ar</span>
+          <span class="material-symbols-outlined text-primary text-5xl mb-4">neurology</span>
           <div class="flex gap-2 justify-center mb-4">
             <div class="w-2 h-2 bg-primary"></div>
             <div class="w-2 h-2 bg-primary/40"></div>
@@ -489,7 +489,7 @@ tailwind.config = {
         </div>
         <span class="font-headline font-black text-primary/40 text-[8px] tracking-[1em] absolute top-4 uppercase">SYNC_INTERFACE</span>
         <div class="relative z-10 text-center">
-          <span class="material-symbols-outlined text-primary text-5xl mb-4">grid_guides</span>
+          <span class="material-symbols-outlined text-primary text-5xl mb-4">track_changes</span>
           <div class="w-16 h-px bg-primary/50 mx-auto mb-4"></div>
           <p class="font-label text-lg tracking-widest text-zinc-400 uppercase font-light">REAL-TIME PvP & PvE</p>
         </div>
@@ -506,13 +506,8 @@ tailwind.config = {
 <footer class="bg-[#050505] flex flex-col items-center justify-center gap-6 w-full px-8 py-12 border-t border-outline-variant/10 relative z-10">
   <div class="absolute top-0 left-0 w-full h-1 hazard-stripe opacity-10"></div>
   <div class="text-xl font-black text-primary/40 tracking-tighter italic font-headline">IMPACT_MESH</div>
-  <div class="flex gap-12">
-    <a class="text-zinc-600 hover:text-primary font-headline text-[10px] tracking-widest uppercase transition-colors" href="#">PRIVACY</a>
-    <a class="text-zinc-600 hover:text-primary font-headline text-[10px] tracking-widest uppercase transition-colors" href="#">SECURITY</a>
-    <a class="text-zinc-600 hover:text-primary font-headline text-[10px] tracking-widest uppercase transition-colors" href="#">SYSTEM_STATUS</a>
-  </div>
   <div class="text-zinc-700 font-headline text-[10px] tracking-widest uppercase opacity-80">
-    ©2025 IMPACT_MESH
+    ©<span id="current-year"></span> IMPACT_MESH
   </div>
 </footer>
 
@@ -535,5 +530,8 @@ tailwind.config = {
   </div>
 </div>
 
+<script>
+  document.getElementById('current-year').textContent = new Date().getFullYear();
+</script>
 </body>
 </html>
