@@ -1351,17 +1351,20 @@ tailwind.config = {
 
   function updatePulsingOverlayLabel(element, time, options = {}) {
     if (!element || element.classList.contains('hidden')) return;
-    const phase = options.phase || 0;
-    const scaleBase = options.scaleBase || 1;
-    const scaleAmplitude = options.scaleAmplitude || 0.03;
-    const opacityBase = options.opacityBase || 0.9;
-    const opacityAmplitude = options.opacityAmplitude || 0.1;
-    const glow = options.glow || 18;
+    const phase = options.phase ?? 0;
+    const scaleBase = options.scaleBase ?? 1;
+    const scaleAmplitude = options.scaleAmplitude ?? 0.03;
+    const opacityBase = options.opacityBase ?? 0.9;
+    const opacityAmplitude = options.opacityAmplitude ?? 0.1;
+    const glow = options.glow ?? 18;
+    const speed = options.speed ?? 3.2;
     const cssColor = element.style.color || '#ff6600';
-    const pulse = 0.5 + Math.sin(time * (options.speed || 3.2) + phase) * 0.5;
+    const pulse = 0.5 + Math.sin(time * speed + phase) * 0.5;
     const scale = scaleBase + pulse * scaleAmplitude;
-    const transformBase = options.transformBase || 'translate(-50%, -115%)';
-    element.style.transform = `${transformBase} scale(${scale.toFixed(3)})`;
+    const transformBase = options.transformBase ?? 'translate(-50%, -115%)';
+    const transformOrigin = options.transformOrigin ?? 'center center';
+    element.style.transformOrigin = transformOrigin;
+    element.style.transform = `${transformBase} scale(${scale.toFixed(3)})`.trim();
     element.style.opacity = String(Math.max(0.6, opacityBase + pulse * opacityAmplitude));
     element.style.boxShadow = `0 0 ${Math.round(glow + pulse * 10)}px ${cssColor}44`;
   }
@@ -1377,6 +1380,7 @@ tailwind.config = {
         phase: index * 0.9,
         speed: 0.58,
         transformBase: '',
+        transformOrigin: 'top right',
         scaleAmplitude: 0.02,
         opacityBase: 0.82,
         opacityAmplitude: 0.1,
