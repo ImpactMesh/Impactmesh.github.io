@@ -725,7 +725,7 @@ tailwind.config = {
             <div class="pointer-events-none absolute inset-0 z-10">
               <div id="config-stage-caption" class="absolute bottom-4 left-4 text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">2D TOP VIEW // STANDBY</div>
               <div id="config-cell-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-primary/40 bg-black/70 px-3 py-2 text-[10px] text-primary tracking-[0.28em] font-bold electric-bloom">STEM CELL</div>
-              <div id="config-shard-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-tertiary/40 bg-black/70 px-3 py-2 text-[10px] text-tertiary tracking-[0.28em] font-bold yellow-bloom">SHARD CELL</div>
+              <div id="config-shard-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-tertiary/40 bg-black/70 px-3 py-2 text-[10px] text-tertiary tracking-[0.28em] font-bold yellow-bloom">SHARD CELLS</div>
               <div id="config-region-legend" class="absolute top-4 right-4 flex flex-col gap-2">
                 <div id="config-region-label-1" class="hidden flex items-center gap-3 border bg-black/70 px-3 py-2 text-[10px] tracking-[0.22em] font-bold uppercase"><span data-region-swatch class="block h-[2px] w-8 bg-current"></span><span>SERVER REGION 1</span></div>
                 <div id="config-region-label-2" class="hidden flex items-center gap-3 border bg-black/70 px-3 py-2 text-[10px] tracking-[0.22em] font-bold uppercase"><span data-region-swatch class="block h-[2px] w-8 bg-current"></span><span>SERVER REGION 2</span></div>
@@ -1084,7 +1084,7 @@ tailwind.config = {
     }
     if (state === 'frontier') {
       cell.baseOpacity = 0.62;
-      cell.material.color.setHex(0xd97a32);
+      cell.material.color.setHex(0xb34d18);
       cell.material.opacity = cell.baseOpacity;
     }
   }
@@ -1207,12 +1207,14 @@ tailwind.config = {
     const dr = cell.row - seedCell.row;
     const dc = cell.col - seedCell.col;
     const lateral = dc + Math.sin((cell.row + 1) * 0.81 + (cell.col + 1) * 0.63) * 0.12;
+    const vertical = Math.abs(dr);
+    const centralBias = Math.abs(lateral) + vertical * 0.6;
 
-    if (dr === 0 && lateral >= -1.15 && lateral <= -0.45) return [0, 1];
-    if (dr === 0 && lateral >= 0.45 && lateral <= 1.15) return [1, 2];
-    if (lateral < -0.45) return [0];
-    if (lateral > 0.45) return [2];
-    return [1];
+    if (centralBias <= 1.55) return [1];
+    if (dr === 0 && lateral >= -1.7 && lateral <= -1.15) return [0, 1];
+    if (dr === 0 && lateral >= 1.15 && lateral <= 1.7) return [1, 2];
+    if (lateral < 0) return [0];
+    return [2];
   }
 
   function getReticularRegionMembers(region) {
@@ -1408,7 +1410,7 @@ tailwind.config = {
 
     if (bestIndex !== null && bestDistance >= 3) {
       reticularState.shardLabelIndex = bestIndex;
-      showOverlayLabel(configShardLabel, 'SHARD CELL', reticularState.cells[bestIndex].mesh.position);
+      showOverlayLabel(configShardLabel, 'SHARD CELLS', reticularState.cells[bestIndex].mesh.position);
     }
   }
 
