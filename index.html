@@ -794,6 +794,7 @@ tailwind.config = {
   let configSelectedMode = null;
   let orthogonalState = null;
   let hexagonalState = null;
+  let areasState = null;
 
   const CONFIG_BUTTON_ACTIVE = 'w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom';
   const CONFIG_BUTTON_INACTIVE = 'w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all';
@@ -984,6 +985,7 @@ tailwind.config = {
     }
     orthogonalState = null;
     hexagonalState = null;
+    areasState = null;
     configHoveredCellIndex = null;
     if (configRegionSvg) {
       configRegionSvg.innerHTML = '';
@@ -1017,6 +1019,7 @@ tailwind.config = {
   function getActiveGridState() {
     if (configSelectedMode === '2d-orthogonal') return orthogonalState;
     if (configSelectedMode === '2d-hexagonal') return hexagonalState;
+    if (configSelectedMode === '2d-areas') return areasState;
     return null;
   }
 
@@ -1034,6 +1037,12 @@ tailwind.config = {
     if (mode === '2d-hexagonal') {
       if (!hexagonalState) prepareHexagonalConfiguration(false);
       startHexagonalGrowth();
+      return;
+    }
+
+    if (mode === '2d-areas') {
+      if (!areasState) prepareAreasConfiguration(false);
+      startAreasGrowth();
       return;
     }
 
@@ -1240,6 +1249,25 @@ tailwind.config = {
     const clone = array.slice();
     for (let i = clone.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
+      [clone[i], clone[j]] = [clone[j], clone[i]];
+    }
+    return clone;
+  }
+
+  function createSeededRandom(seed) {
+    let state = seed >>> 0;
+    return () => {
+      state = (state + 0x6D2B79F5) >>> 0;
+      let t = Math.imul(state ^ (state >>> 15), 1 | state);
+      t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function seededShuffle(array, rng) {
+    const clone = array.slice();
+    for (let i = clone.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(rng() * (i + 1));
       [clone[i], clone[j]] = [clone[j], clone[i]];
     }
     return clone;
@@ -1714,6 +1742,466 @@ tailwind.config = {
 
     updateOrthogonalCameraOrbit(time);
     updateOrthogonalRegionPulse(time);
+    updatePulsingOverlayLabel(configCellLabel, time, { phase: 0, speed: 1.8, scaleAmplitude: 0.035, opacityBase: 0.86, opacityAmplitude: 0.12, glow: 20 });
+    updatePulsingOverlayLabel(configShardLabel, time, { phase: 1.2, speed: 1.5, scaleAmplitude: 0.025, opacityBase: 0.82, opacityAmplitude: 0.12, glow: 16 });
+    updatePulsingOverlayLabel(configHoverLabel, time, { phase: 0.5, speed: 1.9, scaleAmplitude: 0.018, opacityBase: 0.86, opacityAmplitude: 0.08, glow: 14 });
+
+    updateOverlayLabelPosition(configCellLabel);
+    updateOverlayLabelPosition(configShardLabel);
+    updateOverlayLabelPosition(configHoverLabel);
+  }
+
+  function clipPolygonAgainstBisector(polygon, siteA, siteB) {
+    if (!polygon.length) return [];
+    const mid = { x: (siteA.x + siteB.x) * 0.5, z: (siteA.z + siteB.z) * 0.5 };
+    const normal = { x: siteB.x - siteA.x, z: siteB.z - siteA.z };
+    const clipped = [];
+
+    function side(point) {
+      return ((point.x - mid.x) * normal.x) + ((point.z - mid.z) * normal.z);
+    }
+
+    for (let i = 0; i < polygon.length; i += 1) {
+      const current = polygon[i];
+      const next = polygon[(i + 1) % polygon.length];
+      const currentSide = side(current);
+      const nextSide = side(next);
+      const currentInside = currentSide <= 0.000001;
+      const nextInside = nextSide <= 0.000001;
+
+      if (currentInside && nextInside) {
+        clipped.push({ x: next.x, z: next.z });
+        continue;
+      }
+
+      if (currentInside !== nextInside) {
+        const t = currentSide / (currentSide - nextSide);
+        const intersection = {
+          x: current.x + (next.x - current.x) * t,
+          z: current.z + (next.z - current.z) * t
+        };
+        clipped.push(intersection);
+      }
+
+      if (!currentInside && nextInside) {
+        clipped.push({ x: next.x, z: next.z });
+      }
+    }
+
+    return clipped;
+  }
+
+  function computePolygonCentroid(points) {
+    if (!points.length) return { x: 0, z: 0 };
+    let twiceArea = 0;
+    let cx = 0;
+    let cz = 0;
+
+    for (let i = 0; i < points.length; i += 1) {
+      const current = points[i];
+      const next = points[(i + 1) % points.length];
+      const cross = (current.x * next.z) - (next.x * current.z);
+      twiceArea += cross;
+      cx += (current.x + next.x) * cross;
+      cz += (current.z + next.z) * cross;
+    }
+
+    if (Math.abs(twiceArea) < 0.000001) {
+      const average = points.reduce((acc, point) => ({ x: acc.x + point.x, z: acc.z + point.z }), { x: 0, z: 0 });
+      return { x: average.x / points.length, z: average.z / points.length };
+    }
+
+    return {
+      x: cx / (3 * twiceArea),
+      z: cz / (3 * twiceArea)
+    };
+  }
+
+  function buildVoronoiCells(sites, bounds) {
+    const basePolygon = [
+      { x: bounds.minX, z: bounds.minZ },
+      { x: bounds.maxX, z: bounds.minZ },
+      { x: bounds.maxX, z: bounds.maxZ },
+      { x: bounds.minX, z: bounds.maxZ }
+    ];
+
+    return sites.map((site, siteIndex) => {
+      let polygon = basePolygon.map((point) => ({ x: point.x, z: point.z }));
+      sites.forEach((other, otherIndex) => {
+        if (siteIndex === otherIndex || !polygon.length) return;
+        polygon = clipPolygonAgainstBisector(polygon, site, other);
+      });
+      return {
+        ...site,
+        polygon,
+        centroid: computePolygonCentroid(polygon)
+      };
+    }).filter((cell) => cell.polygon.length >= 3);
+  }
+
+  function buildVoronoiAdjacency(cells) {
+    const adjacency = cells.map(() => new Set());
+    const edgeMap = new Map();
+
+    function pointKey(point) {
+      return `${point.x.toFixed(4)},${point.z.toFixed(4)}`;
+    }
+
+    function edgeKey(a, b) {
+      const keyA = pointKey(a);
+      const keyB = pointKey(b);
+      return keyA < keyB ? `${keyA}|${keyB}` : `${keyB}|${keyA}`;
+    }
+
+    cells.forEach((cell, cellIndex) => {
+      cell.polygon.forEach((point, pointIndex) => {
+        const next = cell.polygon[(pointIndex + 1) % cell.polygon.length];
+        const key = edgeKey(point, next);
+        if (edgeMap.has(key)) {
+          const otherIndex = edgeMap.get(key);
+          adjacency[cellIndex].add(otherIndex);
+          adjacency[otherIndex].add(cellIndex);
+        } else {
+          edgeMap.set(key, cellIndex);
+        }
+      });
+    });
+
+    return adjacency.map((neighbors) => [...neighbors]);
+  }
+
+  function makeConfigAreaId(index) {
+    const mixed = (((index + 1) * 2654435761) ^ 0x85ebca6b) >>> 0;
+    return mixed.toString(36).toUpperCase().padStart(6, '0').slice(0, 6);
+  }
+
+  function prepareAreasConfiguration(autoStart) {
+    clearConfigGroup();
+    if (configRegionSvg) {
+      configRegionSvg.style.display = 'none';
+      configRegionSvg.innerHTML = '';
+    }
+
+    configSelectedMode = '2d-areas';
+    configActiveCamera = configOrthoCamera;
+
+    const bounds = { minX: -5.8, maxX: 5.8, minZ: -4.6, maxZ: 4.6 };
+    const boardWidth = bounds.maxX - bounds.minX;
+    const boardHeight = bounds.maxZ - bounds.minZ;
+    const group = new THREE.Group();
+
+    const base = new THREE.Mesh(
+      new THREE.PlaneGeometry(boardWidth + 1.2, boardHeight + 1.2),
+      new THREE.MeshBasicMaterial({ color: 0x090909 })
+    );
+    base.rotation.x = -Math.PI / 2;
+    base.position.y = -0.08;
+    group.add(base);
+
+    const border = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(boardWidth + 0.28, 0.02, boardHeight + 0.28)),
+      new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.16 })
+    );
+    border.position.y = -0.01;
+    group.add(border);
+
+    const rng = createSeededRandom(0xA3EA51);
+    const siteRows = 4;
+    const siteCols = 5;
+    const marginX = 0.95;
+    const marginZ = 0.88;
+    const stepX = (boardWidth - marginX * 2) / (siteCols - 1);
+    const stepZ = (boardHeight - marginZ * 2) / (siteRows - 1);
+    const initialSites = [];
+
+    for (let row = 0; row < siteRows; row += 1) {
+      for (let col = 0; col < siteCols; col += 1) {
+        const jitterX = (rng() - 0.5) * stepX * 0.62;
+        const jitterZ = (rng() - 0.5) * stepZ * 0.62;
+        initialSites.push({
+          index: initialSites.length,
+          x: bounds.minX + marginX + col * stepX + jitterX,
+          z: bounds.minZ + marginZ + row * stepZ + jitterZ
+        });
+      }
+    }
+
+    const relaxedSites = buildVoronoiCells(initialSites, bounds).map((cell, index) => ({
+      index,
+      x: Math.min(bounds.maxX - 0.52, Math.max(bounds.minX + 0.52, initialSites[index].x * 0.58 + cell.centroid.x * 0.42)),
+      z: Math.min(bounds.maxZ - 0.52, Math.max(bounds.minZ + 0.52, initialSites[index].z * 0.58 + cell.centroid.z * 0.42))
+    }));
+
+    const areaCells = buildVoronoiCells(relaxedSites, bounds);
+    const adjacency = buildVoronoiAdjacency(areaCells);
+    const cells = [];
+
+    areaCells.forEach((cell, cellIndex) => {
+      const centroid = computePolygonCentroid(cell.polygon);
+      const localPoints = cell.polygon.map((point) => new THREE.Vector2(point.x - centroid.x, -(point.z - centroid.z)));
+      const shape = new THREE.Shape(localPoints);
+      const geometry = new THREE.ShapeGeometry(shape);
+      const material = new THREE.MeshBasicMaterial({
+        color: 0x241108,
+        transparent: true,
+        opacity: 0.56,
+        side: THREE.DoubleSide
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(centroid.x, 0.01, centroid.z);
+      mesh.userData.cellIndex = cellIndex;
+
+      const outline = new THREE.LineSegments(
+        new THREE.EdgesGeometry(geometry),
+        new THREE.LineBasicMaterial({ color: 0x4a2310, transparent: true, opacity: 0.9 })
+      );
+      mesh.add(outline);
+      group.add(mesh);
+
+      cells.push({
+        index: cellIndex,
+        mesh,
+        material,
+        outline,
+        polygon: cell.polygon,
+        centroid,
+        neighbors: adjacency[cellIndex],
+        cellId: makeConfigAreaId(cellIndex),
+        state: 'dead',
+        baseOpacity: 0.56,
+        pulseOffset: rng() * Math.PI * 2
+      });
+    });
+
+    configScene.add(group);
+    configCurrentGroup = group;
+    areasState = {
+      bounds,
+      cells,
+      running: false,
+      phase: 'idle',
+      alive: new Set(),
+      latest: new Set(),
+      seedIndex: null,
+      shardLabelIndex: null,
+      startedAt: 0,
+      lastGrowthAt: 0,
+      growthStep: 0,
+      maxAlive: 11,
+      rng: createSeededRandom(0xA3EA52)
+    };
+
+    hideOverlayLabel(configCellLabel);
+    hideOverlayLabel(configShardLabel);
+    hideOverlayLabel(configHoverLabel);
+    configRegionLabels.forEach(hideOverlayLabel);
+    configStageCaption.textContent = 'AREA MAP // CLICK TO INITIATE';
+    renderConfigScene();
+
+    if (autoStart) startAreasGrowth();
+  }
+
+  function setAreasCellState(index, state) {
+    if (!areasState) return;
+    const cell = areasState.cells[index];
+    if (!cell) return;
+
+    cell.state = state;
+    if (state === 'dead') {
+      cell.baseOpacity = 0.56;
+      cell.material.color.setHex(0x241108);
+      cell.material.opacity = cell.baseOpacity;
+      return;
+    }
+    if (state === 'stem-bright') {
+      cell.baseOpacity = 0.98;
+      cell.material.color.setHex(0xff6600);
+      cell.material.opacity = cell.baseOpacity;
+      return;
+    }
+    if (state === 'stem-dim') {
+      cell.baseOpacity = 0.3;
+      cell.material.color.setHex(0x4d1b05);
+      cell.material.opacity = cell.baseOpacity;
+      return;
+    }
+    if (state === 'core') {
+      cell.baseOpacity = 0.72;
+      cell.material.color.setHex(0xd97a32);
+      cell.material.opacity = cell.baseOpacity;
+      return;
+    }
+    if (state === 'frontier') {
+      cell.baseOpacity = 0.84;
+      cell.material.color.setHex(0xf0a45a);
+      cell.material.opacity = cell.baseOpacity;
+    }
+  }
+
+  function getAreaNeighbors(index) {
+    if (!areasState) return [];
+    return areasState.cells[index]?.neighbors || [];
+  }
+
+  function countAliveAreaNeighbors(index) {
+    if (!areasState) return 0;
+    return getAreaNeighbors(index).filter((neighbor) => areasState.alive.has(neighbor)).length;
+  }
+
+  function startAreasGrowth() {
+    if (!areasState) {
+      prepareAreasConfiguration(true);
+      return;
+    }
+
+    areasState.cells.forEach((_, index) => setAreasCellState(index, 'dead'));
+    configRegionLabels.forEach(hideOverlayLabel);
+
+    const centerTarget = { x: 0, z: 0 };
+    let seedIndex = 0;
+    let bestDistance = Infinity;
+    areasState.cells.forEach((cell, index) => {
+      const distance = Math.hypot(cell.centroid.x - centerTarget.x, cell.centroid.z - centerTarget.z);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        seedIndex = index;
+      }
+    });
+
+    const seedCell = areasState.cells[seedIndex];
+    areasState.running = true;
+    areasState.phase = 'seed';
+    areasState.alive = new Set([seedIndex]);
+    areasState.latest = new Set([seedIndex]);
+    areasState.seedIndex = seedIndex;
+    areasState.shardLabelIndex = null;
+    areasState.startedAt = performance.now() * 0.001;
+    areasState.lastGrowthAt = areasState.startedAt;
+    areasState.growthStep = 0;
+
+    setAreasCellState(seedIndex, 'stem-bright');
+    styleOverlayTag(configCellLabel, 0xff6600);
+    styleOverlayTag(configShardLabel, 0xffa347);
+    showOverlayLabel(configCellLabel, 'STEM AREA', seedCell.mesh.position);
+    hideOverlayLabel(configShardLabel);
+    configStageCaption.textContent = 'AREA MAP // STEM AREA INITIALIZING';
+    renderConfigScene();
+  }
+
+  function updateAreasShardLabel() {
+    if (!areasState || areasState.alive.size < 4) return;
+    const seedCell = areasState.cells[areasState.seedIndex];
+    let bestIndex = null;
+    let bestDistance = -1;
+
+    areasState.alive.forEach((index) => {
+      if (index === areasState.seedIndex) return;
+      const cell = areasState.cells[index];
+      const distance = Math.hypot(cell.centroid.x - seedCell.centroid.x, cell.centroid.z - seedCell.centroid.z);
+      if (distance > bestDistance) {
+        bestDistance = distance;
+        bestIndex = index;
+      }
+    });
+
+    if (bestIndex !== null) {
+      areasState.shardLabelIndex = bestIndex;
+      showOverlayLabel(configShardLabel, 'CLAIMED AREAS', areasState.cells[bestIndex].mesh.position);
+    }
+  }
+
+  function scoreAreaGrowthCandidate(index) {
+    const seedCell = areasState.cells[areasState.seedIndex];
+    const candidate = areasState.cells[index];
+    const neighbors = countAliveAreaNeighbors(index);
+    const distance = Math.hypot(candidate.centroid.x - seedCell.centroid.x, candidate.centroid.z - seedCell.centroid.z);
+    const centerPull = Math.hypot(candidate.centroid.x, candidate.centroid.z);
+    const variation = Math.sin(candidate.centroid.x * 0.91 + areasState.growthStep * 0.67) + Math.cos(candidate.centroid.z * 1.03 - areasState.growthStep * 0.49);
+    return neighbors * 2.1 - distance * 0.24 - centerPull * 0.08 + variation * 0.12;
+  }
+
+  function advanceAreasGrowth() {
+    if (!areasState || areasState.seedIndex === null) return;
+
+    const frontierCandidates = new Set();
+    areasState.alive.forEach((index) => {
+      getAreaNeighbors(index).forEach((neighbor) => {
+        if (!areasState.alive.has(neighbor)) frontierCandidates.add(neighbor);
+      });
+    });
+
+    if (!frontierCandidates.size) {
+      areasState.running = false;
+      areasState.phase = 'stable';
+      configStageCaption.textContent = '';
+      return;
+    }
+
+    const ranked = [...frontierCandidates]
+      .map((index) => ({ index, score: scoreAreaGrowthCandidate(index) }))
+      .sort((a, b) => b.score - a.score);
+
+    const nextFrontier = new Set();
+    const quota = Math.min(2 + Math.floor(areasState.growthStep * 0.35), Math.max(2, ranked.length));
+    ranked.forEach(({ index, score }, rank) => {
+      const chance = 0.18 - rank * 0.02;
+      if (nextFrontier.size >= quota) return;
+      if (score >= 2.2 || areasState.rng() < chance || nextFrontier.size < 1) nextFrontier.add(index);
+    });
+
+    if (!nextFrontier.size && ranked[0]) nextFrontier.add(ranked[0].index);
+
+    areasState.alive.forEach((index) => {
+      if (index !== areasState.seedIndex) setAreasCellState(index, 'core');
+    });
+
+    nextFrontier.forEach((index) => {
+      areasState.alive.add(index);
+      setAreasCellState(index, 'frontier');
+    });
+
+    areasState.latest = nextFrontier;
+    areasState.growthStep += 1;
+    updateAreasShardLabel();
+    configStageCaption.textContent = `AREA MAP // EXPANSION WAVE ${String(areasState.growthStep).padStart(2, '0')}`;
+
+    if (areasState.alive.size >= areasState.maxAlive || areasState.growthStep >= 9) {
+      areasState.alive.forEach((index) => {
+        if (index !== areasState.seedIndex) setAreasCellState(index, 'core');
+      });
+      areasState.running = false;
+      areasState.phase = 'stable';
+      configStageCaption.textContent = '';
+    }
+  }
+
+  function updateAreasAnimation(time) {
+    if (!areasState || areasState.seedIndex === null) return;
+
+    const seedIndex = areasState.seedIndex;
+    const elapsed = time - areasState.startedAt;
+
+    if (areasState.phase === 'seed') {
+      const blinkOn = Math.floor(elapsed * 5.2) % 2 === 0;
+      setAreasCellState(seedIndex, blinkOn ? 'stem-bright' : 'stem-dim');
+      if (elapsed >= 1.2) {
+        areasState.phase = 'grow';
+        setAreasCellState(seedIndex, 'stem-bright');
+        areasState.lastGrowthAt = time;
+        configStageCaption.textContent = 'AREA MAP // FIRST CLAIM';
+      }
+    } else {
+      const seedCell = areasState.cells[seedIndex];
+      if (seedCell) {
+        seedCell.material.opacity = 0.86 + ((Math.sin(time * 4.6) + 1) * 0.06);
+      }
+      if (areasState.running && time - areasState.lastGrowthAt >= 0.28) {
+        areasState.lastGrowthAt = time;
+        advanceAreasGrowth();
+      }
+    }
+
     updatePulsingOverlayLabel(configCellLabel, time, { phase: 0, speed: 1.8, scaleAmplitude: 0.035, opacityBase: 0.86, opacityAmplitude: 0.12, glow: 20 });
     updatePulsingOverlayLabel(configShardLabel, time, { phase: 1.2, speed: 1.5, scaleAmplitude: 0.025, opacityBase: 0.82, opacityAmplitude: 0.12, glow: 16 });
     updatePulsingOverlayLabel(configHoverLabel, time, { phase: 0.5, speed: 1.9, scaleAmplitude: 0.018, opacityBase: 0.86, opacityAmplitude: 0.08, glow: 14 });
@@ -2573,6 +3061,7 @@ tailwind.config = {
     const time = performance.now() * 0.001;
     if (configSelectedMode === '2d-orthogonal') updateOrthogonalAnimation(time);
     if (configSelectedMode === '2d-hexagonal') updateHexagonalAnimation(time);
+    if (configSelectedMode === '2d-areas') updateAreasAnimation(time);
 
     if (!document.getElementById('config-overlay').classList.contains('hidden')) {
       renderConfigScene();
