@@ -1919,8 +1919,9 @@ tailwind.config = {
     ];
     const microSites = [];
     const macroClearance = 1.75;
-    const dispersedTarget = 17;
-    const clusteredPerCenter = 4;
+    const dispersedTarget = 24;
+    const clusteredPerCenter = 5;
+    const totalTarget = 42;
 
     function insideBoundary(candidate) {
       return pointInPolygon(candidate, boundaryPolygon);
@@ -1942,7 +1943,7 @@ tailwind.config = {
       const minDistance = microSites.length
         ? Math.min(...microSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z)))
         : Infinity;
-      if (minDistance < 1.02) continue;
+      if (minDistance < 0.86) continue;
       microSites.push({ index: macroSites.length + microSites.length, kind: 'micro', ...candidate });
     }
 
@@ -1963,11 +1964,27 @@ tailwind.config = {
         const minDistance = microSites.length
           ? Math.min(...microSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z)))
           : Infinity;
-        if (minDistance < 0.24) continue;
+        if (minDistance < 0.2) continue;
         microSites.push({ index: macroSites.length + microSites.length, kind: 'micro', ...candidate });
         placed += 1;
       }
     });
+
+    let fallbackAttempts = 0;
+    while (macroSites.length + microSites.length < totalTarget && fallbackAttempts < 16000) {
+      fallbackAttempts += 1;
+      const candidate = {
+        x: bounds.minX + 0.4 + rng() * ((bounds.maxX - bounds.minX) - 0.8),
+        z: bounds.minZ + 0.4 + rng() * ((bounds.maxZ - bounds.minZ) - 0.8)
+      };
+      if (!insideBoundary(candidate)) continue;
+      if (!farFromMacros(candidate)) continue;
+      const minDistance = microSites.length
+        ? Math.min(...microSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z)))
+        : Infinity;
+      if (minDistance < 0.17) continue;
+      microSites.push({ index: macroSites.length + microSites.length, kind: 'micro', ...candidate });
+    }
 
     return [...macroSites, ...microSites];
   }
