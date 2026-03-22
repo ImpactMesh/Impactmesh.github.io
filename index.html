@@ -142,8 +142,32 @@ tailwind.config = {
     pointer-events: none;
     transform-origin: center;
   }
-  .mesh-marker-square {
+  .mesh-marker-angle {
     position: absolute;
+    inset: 0;
+    transform-origin: center;
+  }
+  .mesh-marker-angle-a {
+    transform: rotate(206.565deg);
+  }
+  .mesh-marker-angle-b {
+    transform: rotate(26.565deg);
+  }
+  .mesh-marker-angle-c {
+    transform: rotate(-63.435deg);
+  }
+  .mesh-marker-carrier {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    --marker-radius: 11.2rem;
+  }
+  @media (min-width: 768px) {
+    .mesh-marker-carrier {
+      --marker-radius: 17.9rem;
+    }
+  }
+  .mesh-marker-square {
     transition: transform 200ms ease;
   }
   .mesh-ray-spin-slow {
@@ -161,6 +185,15 @@ tailwind.config = {
   .mesh-marker-spin-c {
     animation: mesh-ray-spin-cw 104s linear infinite;
   }
+  .mesh-marker-counter-a {
+    animation: mesh-marker-counter-cw 72s linear infinite;
+  }
+  .mesh-marker-counter-b {
+    animation: mesh-marker-counter-ccw 88s linear infinite;
+  }
+  .mesh-marker-counter-c {
+    animation: mesh-marker-counter-cw 104s linear infinite;
+  }
   @keyframes mesh-ray-spin-cw {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
@@ -168,6 +201,14 @@ tailwind.config = {
   @keyframes mesh-ray-spin-ccw {
     from { transform: rotate(360deg); }
     to { transform: rotate(0deg); }
+  }
+  @keyframes mesh-marker-counter-cw {
+    from { transform: translate(-50%, -50%) translateX(var(--marker-radius)) rotate(0deg); }
+    to { transform: translate(-50%, -50%) translateX(var(--marker-radius)) rotate(-360deg); }
+  }
+  @keyframes mesh-marker-counter-ccw {
+    from { transform: translate(-50%, -50%) translateX(var(--marker-radius)) rotate(0deg); }
+    to { transform: translate(-50%, -50%) translateX(var(--marker-radius)) rotate(360deg); }
   }
 </style>
 </head>
@@ -458,13 +499,25 @@ tailwind.config = {
       </div>
       <!-- Orbiting markers -->
       <div class="mesh-marker-orbit mesh-marker-spin-a">
-        <div class="mesh-marker-square top-1/2 left-1/2 ml-[9.5rem] -mt-2 w-4 h-4 bg-primary group-hover:scale-125" style="filter: drop-shadow(0 0 10px #FF6600);"></div>
+        <div class="mesh-marker-angle mesh-marker-angle-a">
+          <div class="mesh-marker-carrier mesh-marker-counter-a">
+            <div class="mesh-marker-square w-4 h-4 bg-primary group-hover:scale-125" style="filter: drop-shadow(0 0 10px #FF6600);"></div>
+          </div>
+        </div>
       </div>
       <div class="mesh-marker-orbit mesh-marker-spin-b">
-        <div class="mesh-marker-square top-1/2 left-1/2 -ml-[10.5rem] mt-[3.5rem] w-3 h-3 bg-tertiary group-hover:scale-125" style="filter: drop-shadow(0 0 10px #FFCC00);"></div>
+        <div class="mesh-marker-angle mesh-marker-angle-b">
+          <div class="mesh-marker-carrier mesh-marker-counter-b">
+            <div class="mesh-marker-square w-3 h-3 bg-tertiary group-hover:scale-125" style="filter: drop-shadow(0 0 10px #FFCC00);"></div>
+          </div>
+        </div>
       </div>
       <div class="mesh-marker-orbit mesh-marker-spin-c">
-        <div class="mesh-marker-square top-1/2 left-1/2 ml-[4.5rem] -mt-[9.5rem] w-2.5 h-2.5 bg-secondary group-hover:scale-125" style="filter: drop-shadow(0 0 15px #FF3300);"></div>
+        <div class="mesh-marker-angle mesh-marker-angle-c">
+          <div class="mesh-marker-carrier mesh-marker-counter-c">
+            <div class="mesh-marker-square w-2.5 h-2.5 bg-secondary group-hover:scale-125" style="filter: drop-shadow(0 0 15px #FF3300);"></div>
+          </div>
+        </div>
       </div>
       <div class="mesh-ray-layer mesh-ray-spin-slow opacity-20 transition-opacity duration-200 group-hover:opacity-35">
         <svg viewBox="0 0 512 512">
