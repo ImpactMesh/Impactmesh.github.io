@@ -1192,6 +1192,7 @@ tailwind.config = {
         labelOffsetX: -1.55,
         labelOffsetZ: -1.0,
         pulsePhase: 0,
+        lineHeight: 0.09,
         lines: [],
         pulseMaterials: []
       },
@@ -1204,6 +1205,7 @@ tailwind.config = {
         labelOffsetX: 0,
         labelOffsetZ: -1.45,
         pulsePhase: 1.4,
+        lineHeight: 0.22,
         lines: [],
         pulseMaterials: []
       },
@@ -1216,6 +1218,7 @@ tailwind.config = {
         labelOffsetX: 1.55,
         labelOffsetZ: -1.0,
         pulsePhase: 2.3,
+        lineHeight: 0.36,
         lines: [],
         pulseMaterials: []
       }
@@ -1277,10 +1280,10 @@ tailwind.config = {
         : `${pointKey(b.x, b.z)}|${pointKey(a.x, a.z)}`;
     }
 
-    function addSolidMesh(width, height, depth, x, y, z) {
+    function addSolidMesh(width, height, depth, x, z) {
       const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.86, depthWrite: false });
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
-      mesh.position.set(x, y, z);
+      mesh.position.set(x, region.lineHeight, z);
       orthogonalState.regionOverlayGroup.add(mesh);
       meshes.push(mesh);
       region.pulseMaterials.push(material);
@@ -1319,7 +1322,6 @@ tailwind.config = {
         0.014,
         horizontal ? lineThickness : length,
         midX,
-        0.05,
         midZ
       );
 
@@ -1327,7 +1329,7 @@ tailwind.config = {
         const key = pointKey(point.x, point.z);
         if (jointKeys.has(key)) return;
         jointKeys.add(key);
-        addSolidMesh(lineThickness, 0.014, lineThickness, point.x, 0.05, point.z);
+        addSolidMesh(lineThickness, 0.014, lineThickness, point.x, point.z);
       });
     });
 
@@ -1367,13 +1369,13 @@ tailwind.config = {
   function updateOrthogonalRegionPulse(time) {
     if (!orthogonalState?.regions?.length) return;
     orthogonalState.regions.forEach((region, index) => {
-      const pulse = 0.5 + Math.sin(time * 1.2 + index * 0.9) * 0.5;
+      const pulse = 0.5 + Math.sin(time * 0.58 + index * 0.9) * 0.5;
       region.pulseMaterials.forEach((material) => {
-        material.opacity = 0.76 + pulse * 0.16;
+        material.opacity = 0.74 + pulse * 0.16;
       });
       updatePulsingOverlayLabel(region.label, time, {
         phase: index * 0.9,
-        speed: 1.2,
+        speed: 0.58,
         transformBase: '',
         scaleAmplitude: 0.02,
         opacityBase: 0.82,
