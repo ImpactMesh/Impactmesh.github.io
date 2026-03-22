@@ -1711,10 +1711,12 @@ tailwind.config = {
     const hexRadius = 0.52;
     const cellRadius = hexRadius;
     const hexHeight = 0.02;
-    const xStep = 1.5 * hexRadius;
-    const zStep = Math.sqrt(3) * hexRadius;
+    const xStep = Math.sqrt(3) * hexRadius;
+    const zStep = 1.5 * hexRadius;
     const centerRow = Math.floor(rows / 2);
     const centerCol = Math.floor(cols / 2);
+    const centerQ = centerCol - Math.floor((centerRow - (centerRow & 1)) / 2);
+    const centerR = centerRow;
     const layout = [];
     let minX = Infinity;
     let maxX = -Infinity;
@@ -1722,18 +1724,26 @@ tailwind.config = {
     let maxZ = -Infinity;
 
     for (let row = 0; row < rows; row += 1) {
+      const rowOffset = (row & 1) ? xStep * 0.5 : 0;
       for (let col = 0; col < cols; col += 1) {
-        const q = col - centerCol;
-        const r = row - centerRow;
-        const x = xStep * q;
-        const z = zStep * (r + q * 0.5);
-        layout.push({ row, col, q, r, x, z });
-        minX = Math.min(minX, x);
-        maxX = Math.max(maxX, x);
-        minZ = Math.min(minZ, z);
-        maxZ = Math.max(maxZ, z);
+        const rawX = col * xStep + rowOffset;
+        const rawZ = row * zStep;
+        const q = col - Math.floor((row - (row & 1)) / 2) - centerQ;
+        const r = row - centerR;
+        layout.push({ row, col, q, r, rawX, rawZ });
+        minX = Math.min(minX, rawX);
+        maxX = Math.max(maxX, rawX);
+        minZ = Math.min(minZ, rawZ);
+        maxZ = Math.max(maxZ, rawZ);
       }
     }
+
+    const centerX = (minX + maxX) * 0.5;
+    const centerZ = (minZ + maxZ) * 0.5;
+    layout.forEach((cell) => {
+      cell.x = cell.rawX - centerX;
+      cell.z = cell.rawZ - centerZ;
+    });
 
     const boardWidth = (maxX - minX) + hexRadius * 4.0;
     const boardHeight = (maxZ - minZ) + hexRadius * 4.2;
@@ -1768,6 +1778,7 @@ tailwind.config = {
         opacity: 0.14
       });
       const mesh = new THREE.Mesh(cellGeometry, material);
+      mesh.rotation.y = Math.PI / 6;
       mesh.position.set(x, 0.01, z);
       mesh.userData.cellIndex = cells.length;
       group.add(mesh);
@@ -1939,7 +1950,7 @@ tailwind.config = {
     const seedCell = hexagonalState.cells[hexagonalState.seedIndex];
     const dq = cell.q - seedCell.q;
     const dr = cell.r - seedCell.r;
-    const lateral = dq;
+    const lateral = dq + dr * 0.5;
     const centralHalfWidth = 1.2 + Math.max(0, 2.4 - Math.abs(dr)) * 0.18;
     const overlapBand = 0.7;
 
@@ -1969,7 +1980,7 @@ tailwind.config = {
   }
 
   function getHexagonalCellCorners(cell, radius) {
-    const cornerOffset = 0;
+    const cornerOffset = Math.PI / 6;
     return Array.from({ length: 6 }, (_, cornerIndex) => ({
       x: cell.mesh.position.x + Math.cos(cornerOffset + cornerIndex * (Math.PI / 3)) * radius,
       z: cell.mesh.position.z + Math.sin(cornerOffset + cornerIndex * (Math.PI / 3)) * radius
@@ -2096,11 +2107,10 @@ tailwind.config = {
 
   function updateHexagonalCameraOrbit(time) {
     if (!hexagonalState || configActiveCamera !== configPerspectiveCamera) return;
-    const angle = time * hexagonalState.orbitSpeed;
     configPerspectiveCamera.position.set(
-      Math.cos(angle) * hexagonalState.orbitRadius,
+      hexagonalState.orbitRadius * 0.08,
       hexagonalState.orbitHeight,
-      Math.sin(angle) * hexagonalState.orbitRadius * 0.82
+      hexagonalState.orbitRadius * 1.08
     );
     configPerspectiveCamera.lookAt(0, 0, 0);
   }
