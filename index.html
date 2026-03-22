@@ -713,15 +713,21 @@ tailwind.config = {
             <div class="text-[10px] text-tertiary tracking-[0.35em] font-bold yellow-bloom">CONFIGURATION SET</div>
             <div class="text-primary/55 text-[10px] tracking-[0.24em] font-mono mt-2">SELECT A SPATIAL STRUCTURE</div>
             <div class="mt-5 space-y-3">
-              <button type="button" class="w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom">2D RETICULAR GRID</button>
-              <button type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all">2D HEXAGONAL GRID</button>
-              <button type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all">2D AREAS</button>
-              <button type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all">3D RETICULAR</button>
-              <button type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all">3D HEXAGONAL STACKED</button>
-              <button type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all">3D HEXAGONAL OFFSET</button>
+              <button id="config-btn-2d-reticular" type="button" class="w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom" onclick="selectConfigMode('2d-reticular')">2D RETICULAR GRID</button>
+              <button id="config-btn-2d-hexagonal" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('2d-hexagonal')">2D HEXAGONAL GRID</button>
+              <button id="config-btn-2d-areas" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('2d-areas')">2D AREAS</button>
+              <button id="config-btn-3d-reticular" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-reticular')">3D RETICULAR</button>
+              <button id="config-btn-3d-hexagonal-stacked" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-stacked')">3D HEXAGONAL STACKED</button>
+              <button id="config-btn-3d-hexagonal-offset" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-offset')">3D HEXAGONAL OFFSET</button>
             </div>
           </aside>
-          <div id="config-three-stage" class="relative h-full min-h-[28rem] border border-primary/20 bg-[#050505]"></div>
+          <div id="config-three-stage" class="relative h-full min-h-[28rem] border border-primary/20 bg-[#050505] overflow-hidden">
+            <div class="pointer-events-none absolute inset-0 z-10">
+              <div id="config-stage-caption" class="absolute bottom-4 left-4 text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">2D TOP VIEW // STANDBY</div>
+              <div id="config-cell-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-primary/40 bg-black/70 px-3 py-2 text-[10px] text-primary tracking-[0.28em] font-bold electric-bloom">STEM CELL</div>
+              <div id="config-shard-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-tertiary/40 bg-black/70 px-3 py-2 text-[10px] text-tertiary tracking-[0.28em] font-bold yellow-bloom">SHARD CELL</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -757,11 +763,28 @@ tailwind.config = {
   let configOverlayTimeout;
   let configRenderer;
   let configScene;
-  let configCamera;
-  let configCube;
-  let configEdges;
+  let configPerspectiveCamera;
+  let configOrthoCamera;
+  let configActiveCamera;
   let configStage;
+  let configStageCaption;
+  let configCellLabel;
+  let configShardLabel;
   let configAnimationStarted = false;
+  let configCurrentGroup = null;
+  let configSelectedMode = '2d-reticular';
+  let reticularState = null;
+
+  const CONFIG_BUTTON_ACTIVE = 'w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom';
+  const CONFIG_BUTTON_INACTIVE = 'w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all';
+  const CONFIG_BUTTON_IDS = {
+    '2d-reticular': 'config-btn-2d-reticular',
+    '2d-hexagonal': 'config-btn-2d-hexagonal',
+    '2d-areas': 'config-btn-2d-areas',
+    '3d-reticular': 'config-btn-3d-reticular',
+    '3d-hexagonal-stacked': 'config-btn-3d-hexagonal-stacked',
+    '3d-hexagonal-offset': 'config-btn-3d-hexagonal-offset'
+  };
 
   function openNotice(title, message) {
     document.getElementById('coming-soon-title').textContent = title;
@@ -792,9 +815,7 @@ tailwind.config = {
       requestAnimationFrame(() => {
         initConfigScene();
         resizeConfigScene();
-        if (configRenderer && configScene && configCamera) {
-          configRenderer.render(configScene, configCamera);
-        }
+        renderConfigScene();
       });
     });
   }
@@ -812,51 +833,30 @@ tailwind.config = {
     if (configRenderer || !window.THREE) return;
 
     configStage = document.getElementById('config-three-stage');
+    configStageCaption = document.getElementById('config-stage-caption');
+    configCellLabel = document.getElementById('config-cell-label');
+    configShardLabel = document.getElementById('config-shard-label');
+
     configRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     configRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     configRenderer.setClearColor(0x070707, 1);
     configRenderer.domElement.className = 'w-full h-full block';
-    configStage.appendChild(configRenderer.domElement);
+    configStage.prepend(configRenderer.domElement);
 
     configScene = new THREE.Scene();
     configScene.background = new THREE.Color(0x070707);
-    configCamera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-    configCamera.position.set(2.8, 2.2, 4.8);
-    configCamera.lookAt(0, 0, 0);
 
-    const ambient = new THREE.AmbientLight(0xffffff, 1.2);
-    configScene.add(ambient);
+    configPerspectiveCamera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+    configPerspectiveCamera.position.set(2.8, 2.2, 4.8);
+    configPerspectiveCamera.lookAt(0, 0, 0);
 
-    const keyLight = new THREE.DirectionalLight(0xff6600, 2.4);
-    keyLight.position.set(3, 4, 5);
-    configScene.add(keyLight);
+    configOrthoCamera = new THREE.OrthographicCamera(-7, 7, 7, -7, 0.1, 40);
+    configOrthoCamera.position.set(0, 12, 0.001);
+    configOrthoCamera.up.set(0, 0, -1);
+    configOrthoCamera.lookAt(0, 0, 0);
 
-    const rimLight = new THREE.DirectionalLight(0xffcc00, 1.7);
-    rimLight.position.set(-4, -2, 3);
-    configScene.add(rimLight);
-
-    const geometry = new THREE.BoxGeometry(2.1, 2.1, 2.1);
-    const material = new THREE.MeshNormalMaterial();
-    configCube = new THREE.Mesh(geometry, material);
-    configScene.add(configCube);
-
-    const edgeGeometry = new THREE.EdgesGeometry(geometry);
-    const edgeMaterial = new THREE.LineBasicMaterial({ color: 0xff6600 });
-    configEdges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-    configCube.add(configEdges);
-
-    const grid = new THREE.GridHelper(12, 14, 0xff6600, 0x2a1206);
-    grid.position.y = -2.1;
-    configScene.add(grid);
-
-    const axesHelper = new THREE.AxesHelper(2.8);
-    configScene.add(axesHelper);
-
-    const axesRing = new THREE.TorusGeometry(3.1, 0.025, 10, 160);
-    const ringMaterial = new THREE.MeshBasicMaterial({ color: 0x4a1f08 });
-    const ring = new THREE.Mesh(axesRing, ringMaterial);
-    ring.rotation.x = Math.PI / 2;
-    configScene.add(ring);
+    setConfigButtonState('2d-reticular');
+    prepareReticularConfiguration(false);
 
     if (!configAnimationStarted) {
       configAnimationStarted = true;
@@ -865,34 +865,421 @@ tailwind.config = {
   }
 
   function resizeConfigScene() {
-    if (!configRenderer || !configStage || !configCamera) return;
+    if (!configRenderer || !configStage) return;
     const width = configStage.clientWidth;
     const height = configStage.clientHeight;
     if (!width || !height) return;
+
     configRenderer.setSize(width, height);
-    configCamera.aspect = width / height;
-    configCamera.updateProjectionMatrix();
+
+    if (configPerspectiveCamera) {
+      configPerspectiveCamera.aspect = width / height;
+      configPerspectiveCamera.updateProjectionMatrix();
+    }
+
+    if (configOrthoCamera) {
+      const frustum = 7;
+      const aspect = width / height;
+      configOrthoCamera.left = -frustum * aspect;
+      configOrthoCamera.right = frustum * aspect;
+      configOrthoCamera.top = frustum;
+      configOrthoCamera.bottom = -frustum;
+      configOrthoCamera.updateProjectionMatrix();
+    }
+
+    updateOverlayLabelPosition(configCellLabel);
+    updateOverlayLabelPosition(configShardLabel);
   }
 
-  function animateConfigScene() {
-    if (!configRenderer || !configScene || !configCamera || !configCube) {
-      requestAnimationFrame(animateConfigScene);
+  function renderConfigScene() {
+    if (!configRenderer || !configScene || !configActiveCamera) return;
+    configRenderer.render(configScene, configActiveCamera);
+  }
+
+  function clearConfigGroup() {
+    if (configCurrentGroup) {
+      configScene.remove(configCurrentGroup);
+      configCurrentGroup.traverse((child) => {
+        if (child.geometry) child.geometry.dispose?.();
+        if (child.material) {
+          if (Array.isArray(child.material)) child.material.forEach((m) => m.dispose?.());
+          else child.material.dispose?.();
+        }
+      });
+      configCurrentGroup = null;
+    }
+    reticularState = null;
+    hideOverlayLabel(configCellLabel);
+    hideOverlayLabel(configShardLabel);
+  }
+
+  function setConfigButtonState(mode) {
+    Object.entries(CONFIG_BUTTON_IDS).forEach(([key, id]) => {
+      const button = document.getElementById(id);
+      if (!button) return;
+      button.className = key === mode ? CONFIG_BUTTON_ACTIVE : CONFIG_BUTTON_INACTIVE;
+    });
+  }
+
+  function selectConfigMode(mode) {
+    configSelectedMode = mode;
+    setConfigButtonState(mode);
+
+    if (mode === '2d-reticular') {
+      if (!reticularState) prepareReticularConfiguration(false);
+      startReticularGrowth();
       return;
     }
 
-    const time = performance.now() * 0.001;
-    configCube.rotation.x = time * 0.45;
-    configCube.rotation.y = time * 0.72;
-    configCube.rotation.z = Math.sin(time * 0.4) * 0.18;
+    renderPendingConfiguration(mode);
+  }
 
-    if (!document.getElementById('config-overlay').classList.contains('hidden')) {
-      configRenderer.render(configScene, configCamera);
+  function renderPendingConfiguration(mode) {
+    clearConfigGroup();
+    configActiveCamera = configPerspectiveCamera;
+    configStageCaption.textContent = `${mode.toUpperCase().replaceAll('-', ' ')} // PENDING`;
+    renderConfigScene();
+  }
+
+  function prepareReticularConfiguration(autoStart) {
+    clearConfigGroup();
+
+    configSelectedMode = '2d-reticular';
+    configActiveCamera = configOrthoCamera;
+
+    const rows = 14;
+    const cols = 14;
+    const cellSize = 0.86;
+    const gap = 0.08;
+    const spacing = cellSize + gap;
+    const boardWidth = cols * spacing;
+    const boardHeight = rows * spacing;
+
+    const group = new THREE.Group();
+
+    const base = new THREE.Mesh(
+      new THREE.PlaneGeometry(boardWidth + 1.5, boardHeight + 1.5),
+      new THREE.MeshBasicMaterial({ color: 0x090909 })
+    );
+    base.rotation.x = -Math.PI / 2;
+    base.position.y = -0.08;
+    group.add(base);
+
+    const gridHelper = new THREE.GridHelper(Math.max(boardWidth, boardHeight) + 1.5, cols, 0x5a2408, 0x241108);
+    gridHelper.position.y = -0.04;
+    group.add(gridHelper);
+
+    const border = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(boardWidth + 0.4, 0.02, boardHeight + 0.4)),
+      new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.18 })
+    );
+    border.position.y = -0.01;
+    group.add(border);
+
+    const cellGeometry = new THREE.PlaneGeometry(cellSize, cellSize);
+    const cells = [];
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        const material = new THREE.MeshBasicMaterial({
+          color: 0x130804,
+          transparent: true,
+          opacity: 0.14
+        });
+        const mesh = new THREE.Mesh(cellGeometry, material);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set(
+          (col - (cols - 1) / 2) * spacing,
+          0.01,
+          (row - (rows - 1) / 2) * spacing
+        );
+        group.add(mesh);
+        cells.push({ row, col, mesh, material });
+      }
     }
 
+    configScene.add(group);
+    configCurrentGroup = group;
+    reticularState = {
+      rows,
+      cols,
+      cellSize,
+      spacing,
+      cells,
+      running: false,
+      phase: 'idle',
+      alive: new Set(),
+      latest: new Set(),
+      seedIndex: null,
+      shardLabelIndex: null,
+      startedAt: 0,
+      lastGrowthAt: 0,
+      growthStep: 0,
+      maxAlive: 26
+    };
+
+    configStageCaption.textContent = '2D TOP VIEW // CLICK RETICULAR GRID TO INITIATE';
+    renderConfigScene();
+
+    if (autoStart) startReticularGrowth();
+  }
+
+  function resetReticularCells() {
+    if (!reticularState) return;
+    reticularState.cells.forEach(({ material }) => {
+      material.color.setHex(0x130804);
+      material.opacity = 0.14;
+    });
+  }
+
+  function setReticularCellState(index, state) {
+    if (!reticularState) return;
+    const cell = reticularState.cells[index];
+    if (!cell) return;
+
+    if (state === 'dead') {
+      cell.material.color.setHex(0x130804);
+      cell.material.opacity = 0.14;
+      return;
+    }
+    if (state === 'stem-bright') {
+      cell.material.color.setHex(0xff6600);
+      cell.material.opacity = 0.98;
+      return;
+    }
+    if (state === 'stem-dim') {
+      cell.material.color.setHex(0x4d1b05);
+      cell.material.opacity = 0.24;
+      return;
+    }
+    if (state === 'core') {
+      cell.material.color.setHex(0xb34d18);
+      cell.material.opacity = 0.42;
+      return;
+    }
+    if (state === 'frontier') {
+      cell.material.color.setHex(0xd97a32);
+      cell.material.opacity = 0.62;
+    }
+  }
+
+  function showOverlayLabel(element, text, worldPosition) {
+    if (!element) return;
+    element.textContent = text;
+    element.dataset.worldX = worldPosition.x;
+    element.dataset.worldY = worldPosition.y;
+    element.dataset.worldZ = worldPosition.z;
+    element.classList.remove('hidden');
+    updateOverlayLabelPosition(element);
+  }
+
+  function hideOverlayLabel(element) {
+    if (!element) return;
+    element.classList.add('hidden');
+  }
+
+  function updateOverlayLabelPosition(element) {
+    if (!element || element.classList.contains('hidden') || !configStage || !configActiveCamera) return;
+
+    const x = Number(element.dataset.worldX || 0);
+    const y = Number(element.dataset.worldY || 0);
+    const z = Number(element.dataset.worldZ || 0);
+    const point = new THREE.Vector3(x, y, z);
+    point.project(configActiveCamera);
+
+    const px = (point.x * 0.5 + 0.5) * configStage.clientWidth;
+    const py = (-point.y * 0.5 + 0.5) * configStage.clientHeight;
+
+    element.style.left = `${px}px`;
+    element.style.top = `${py}px`;
+  }
+
+  function randomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function shuffled(array) {
+    const clone = array.slice();
+    for (let i = clone.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [clone[i], clone[j]] = [clone[j], clone[i]];
+    }
+    return clone;
+  }
+
+  function getReticularNeighbors(index) {
+    if (!reticularState) return [];
+    const { row, col } = reticularState.cells[index];
+    const offsets = [
+      [0, -1],
+      [1, 0],
+      [0, 1],
+      [-1, 0]
+    ];
+
+    return offsets
+      .map(([dx, dy]) => ({ nextRow: row + dy, nextCol: col + dx }))
+      .filter(({ nextRow, nextCol }) => nextRow >= 0 && nextCol >= 0 && nextRow < reticularState.rows && nextCol < reticularState.cols)
+      .map(({ nextRow, nextCol }) => nextRow * reticularState.cols + nextCol);
+  }
+
+  function countAliveReticularNeighbors(index) {
+    if (!reticularState) return 0;
+    return getReticularNeighbors(index).filter((neighbor) => reticularState.alive.has(neighbor)).length;
+  }
+
+  function startReticularGrowth() {
+    if (!reticularState) {
+      prepareReticularConfiguration(true);
+      return;
+    }
+
+    resetReticularCells();
+
+    const safeMargin = 3;
+    const seedRow = randomInt(safeMargin, reticularState.rows - safeMargin - 1);
+    const seedCol = randomInt(safeMargin, reticularState.cols - safeMargin - 1);
+    const seedIndex = seedRow * reticularState.cols + seedCol;
+    const seedCell = reticularState.cells[seedIndex];
+
+    reticularState.running = true;
+    reticularState.phase = 'seed';
+    reticularState.alive = new Set([seedIndex]);
+    reticularState.latest = new Set([seedIndex]);
+    reticularState.seedIndex = seedIndex;
+    reticularState.shardLabelIndex = null;
+    reticularState.startedAt = performance.now() * 0.001;
+    reticularState.lastGrowthAt = reticularState.startedAt;
+    reticularState.growthStep = 0;
+
+    setReticularCellState(seedIndex, 'stem-bright');
+    showOverlayLabel(configCellLabel, 'STEM CELL', seedCell.mesh.position);
+    hideOverlayLabel(configShardLabel);
+    configStageCaption.textContent = '2D TOP VIEW // STEM CELL INITIALIZING';
+    renderConfigScene();
+  }
+
+  function updateShardCellLabel() {
+    if (!reticularState || reticularState.alive.size < 4) return;
+
+    const seedCell = reticularState.cells[reticularState.seedIndex];
+    let bestIndex = null;
+    let bestDistance = -1;
+
+    reticularState.alive.forEach((index) => {
+      if (index === reticularState.seedIndex) return;
+      const candidate = reticularState.cells[index];
+      const distance = Math.abs(candidate.row - seedCell.row) + Math.abs(candidate.col - seedCell.col);
+      if (distance > bestDistance) {
+        bestDistance = distance;
+        bestIndex = index;
+      }
+    });
+
+    if (bestIndex !== null && bestDistance >= 3) {
+      reticularState.shardLabelIndex = bestIndex;
+      showOverlayLabel(configShardLabel, 'SHARD CELL', reticularState.cells[bestIndex].mesh.position);
+    }
+  }
+
+  function advanceReticularGrowth() {
+    if (!reticularState) return;
+
+    const candidateSet = new Set();
+    const sources = reticularState.latest.size ? reticularState.latest : reticularState.alive;
+
+    sources.forEach((index) => {
+      getReticularNeighbors(index).forEach((neighbor) => {
+        if (!reticularState.alive.has(neighbor)) candidateSet.add(neighbor);
+      });
+    });
+
+    const candidates = shuffled([...candidateSet]).sort((a, b) => countAliveReticularNeighbors(b) - countAliveReticularNeighbors(a));
+    const nextFrontier = new Set();
+    const targetCount = Math.min(1 + Math.floor(reticularState.growthStep / 4), 3);
+    const baseChance = Math.max(0.58 - reticularState.growthStep * 0.045, 0.2);
+
+    for (const candidate of candidates) {
+      if (Math.random() < baseChance || nextFrontier.size < 2) nextFrontier.add(candidate);
+      if (nextFrontier.size >= targetCount) break;
+    }
+
+    if (nextFrontier.size === 0 && candidates.length) {
+      nextFrontier.add(candidates[0]);
+    }
+
+    reticularState.latest.forEach((index) => {
+      if (index !== reticularState.seedIndex) setReticularCellState(index, 'core');
+    });
+
+    nextFrontier.forEach((index) => {
+      reticularState.alive.add(index);
+      setReticularCellState(index, 'frontier');
+    });
+
+    reticularState.latest = nextFrontier;
+    reticularState.growthStep += 1;
+    updateShardCellLabel();
+    configStageCaption.textContent = `2D TOP VIEW // GROWTH WAVE ${String(reticularState.growthStep).padStart(2, '0')}`;
+
+    if (reticularState.alive.size >= reticularState.maxAlive || reticularState.growthStep >= 12) {
+      reticularState.running = false;
+      reticularState.phase = 'stable';
+      configStageCaption.textContent = '2D TOP VIEW // COLONY STABILIZED';
+    }
+  }
+
+  function updateReticularAnimation(time) {
+    if (!reticularState || !reticularState.seedIndex) return;
+
+    const seedIndex = reticularState.seedIndex;
+    const elapsed = time - reticularState.startedAt;
+
+    if (reticularState.phase === 'seed') {
+      const blinkOn = Math.floor(elapsed * 5.4) % 2 === 0;
+      setReticularCellState(seedIndex, blinkOn ? 'stem-bright' : 'stem-dim');
+      if (elapsed >= 1.3) {
+        reticularState.phase = 'grow';
+        setReticularCellState(seedIndex, 'stem-bright');
+        reticularState.lastGrowthAt = time;
+        configStageCaption.textContent = '2D TOP VIEW // FIRST DIVISION';
+      }
+    } else if (reticularState.running && time - reticularState.lastGrowthAt >= 0.24) {
+      reticularState.lastGrowthAt = time;
+      advanceReticularGrowth();
+    }
+
+    if (reticularState.latest.size) {
+      const pulse = 0.48 + Math.sin(time * 7.5) * 0.08;
+      reticularState.latest.forEach((index) => {
+        const cell = reticularState.cells[index];
+        if (cell && index !== reticularState.seedIndex) cell.material.opacity = Math.max(0.34, pulse);
+      });
+    }
+
+    updateOverlayLabelPosition(configCellLabel);
+    updateOverlayLabelPosition(configShardLabel);
+  }
+
+  function animateConfigScene() {
     requestAnimationFrame(animateConfigScene);
+
+    if (!configRenderer || !configScene || !configActiveCamera) return;
+
+    const time = performance.now() * 0.001;
+    if (configSelectedMode === '2d-reticular') updateReticularAnimation(time);
+
+    if (!document.getElementById('config-overlay').classList.contains('hidden')) {
+      renderConfigScene();
+    }
   }
 
   window.addEventListener('resize', resizeConfigScene);
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      openConfigOverlay();
+    }, 80);
+  });
 </script>
 </body>
 </html>
