@@ -318,7 +318,7 @@ tailwind.config = {
   <!-- Right column -->
   <div class="lg:col-span-5 flex flex-col space-y-6 justify-start">
     <!-- Network dashboard panel (unified) -->
-    <div class="relative w-full border border-primary/40 bg-surface-container/90 backdrop-blur-xl cursor-pointer hover:border-primary/60 transition-colors" onclick="openNotice('COMING SOON', 'Network dashboard is under development.')">
+    <div class="relative w-full border border-primary/40 bg-surface-container/90 backdrop-blur-xl cursor-pointer hover:border-primary/60 transition-colors" onclick="openNetworkNotice()">
       <!-- Top: Network overview image -->
       <div class="relative w-full aspect-video overflow-hidden bg-black/60">
         <img alt="Protocol Status" class="w-full h-full object-cover opacity-40 grayscale invert sepia-100 hue-rotate-[320deg] saturate-[200%]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEatBreZKCD5LNbOiWRxkrPoEu-xsaqx8CkwtDiKGmNh7e-MJdbniDkmqHRzZoCrB0COxW5VEe9iNVISJQ2-dQ2nXzl7UvjsvNpOChQOs133blor63m1azax7UpSt2SQCLXU--0gRYwLSZ_Se2cVxOCb8fH_a63mlb7a4q_9aWASBzzQEMiL8VfxkSSHabJ0s8rBAabfEqDv5lnovMZUKyVjJW0PYv5rxj9Iv93S2d-Al2XbnUn-62FP4Ty2M6lyBuxmL6HRCH8Zw"/>
@@ -703,6 +703,10 @@ tailwind.config = {
       <div class="text-[10px] text-tertiary font-mono tracking-widest yellow-bloom">STATUS: PENDING</div>
       <h2 id="coming-soon-title" class="font-headline text-3xl font-bold text-primary electric-bloom uppercase">COMING SOON</h2>
       <p id="coming-soon-message" class="text-on-surface-variant text-sm tracking-wide">Coming soon.</p>
+      <div id="notice-extra" class="hidden space-y-4 pt-2 border-t border-primary/15">
+        <p id="notice-extra-text" class="text-[11px] text-primary/70 tracking-[0.18em] font-label">Preview the geometric configurations scene.</p>
+        <button class="bg-surface-container-highest text-on-surface px-8 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="closeNotice();openConfigOverlay();">OPEN CONFIGURATIONS</button>
+      </div>
       <button class="bg-primary text-black font-bold px-8 py-3 text-xs tracking-[0.2em] uppercase mt-4 button-bloom" onclick="closeNotice()">DISMISS</button>
     </div>
   </div>
@@ -725,11 +729,21 @@ tailwind.config = {
   function openNotice(title, message) {
     document.getElementById('coming-soon-title').textContent = title;
     document.getElementById('coming-soon-message').textContent = message;
+    document.getElementById('notice-extra').classList.add('hidden');
+    document.getElementById('coming-soon-modal').classList.remove('hidden');
+  }
+
+  function openNetworkNotice() {
+    document.getElementById('coming-soon-title').textContent = 'COMING SOON';
+    document.getElementById('coming-soon-message').textContent = 'Network dashboard is under development.';
+    document.getElementById('notice-extra-text').textContent = 'Want a preview? Explore the geometric configurations scene.';
+    document.getElementById('notice-extra').classList.remove('hidden');
     document.getElementById('coming-soon-modal').classList.remove('hidden');
   }
 
   function closeNotice() {
     document.getElementById('coming-soon-modal').classList.add('hidden');
+    document.getElementById('notice-extra').classList.add('hidden');
   }
 
   function openConfigOverlay() {
