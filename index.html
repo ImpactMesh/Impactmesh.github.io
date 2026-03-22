@@ -1870,6 +1870,73 @@ tailwind.config = {
     return adjacency.map((neighbors) => [...neighbors]);
   }
 
+  function buildAreasSites(bounds, rng) {
+    const macroBlueprint = [
+      { x: -0.34, z: -0.22 },
+      { x: 0.28, z: -0.08 },
+      { x: -0.02, z: 0.31 }
+    ];
+    const macroSites = macroBlueprint.map((entry, index) => ({
+      index,
+      kind: 'macro',
+      x: entry.x * (bounds.maxX - bounds.minX) * 0.5 + (rng() - 0.5) * 0.55,
+      z: entry.z * (bounds.maxZ - bounds.minZ) * 0.5 + (rng() - 0.5) * 0.55
+    }));
+
+    const clusterCenters = [
+      { x: -2.35, z: -2.15 },
+      { x: 2.45, z: 2.05 },
+      { x: 3.15, z: -1.85 }
+    ];
+    const microSites = [];
+    const macroClearance = 1.75;
+    const dispersedTarget = 17;
+    const clusteredPerCenter = 4;
+
+    function farFromMacros(candidate) {
+      return Math.min(...macroSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z))) >= macroClearance;
+    }
+
+    let attempts = 0;
+    while (microSites.length < dispersedTarget && attempts < 12000) {
+      attempts += 1;
+      const candidate = {
+        x: bounds.minX + 0.48 + rng() * ((bounds.maxX - bounds.minX) - 0.96),
+        z: bounds.minZ + 0.48 + rng() * ((bounds.maxZ - bounds.minZ) - 0.96)
+      };
+      if (!farFromMacros(candidate)) continue;
+      const minDistance = microSites.length
+        ? Math.min(...microSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z)))
+        : Infinity;
+      if (minDistance < 1.02) continue;
+      microSites.push({ index: macroSites.length + microSites.length, kind: 'micro', ...candidate });
+    }
+
+    clusterCenters.forEach((center) => {
+      let placed = 0;
+      let clusterAttempts = 0;
+      while (placed < clusteredPerCenter && clusterAttempts < 6000) {
+        clusterAttempts += 1;
+        const angle = rng() * Math.PI * 2;
+        const radius = 0.12 + rng() * 0.46;
+        const candidate = {
+          x: center.x + Math.cos(angle) * radius,
+          z: center.z + Math.sin(angle) * radius
+        };
+        if (candidate.x <= bounds.minX + 0.35 || candidate.x >= bounds.maxX - 0.35 || candidate.z <= bounds.minZ + 0.35 || candidate.z >= bounds.maxZ - 0.35) continue;
+        if (!farFromMacros(candidate)) continue;
+        const minDistance = microSites.length
+          ? Math.min(...microSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z)))
+          : Infinity;
+        if (minDistance < 0.24) continue;
+        microSites.push({ index: macroSites.length + microSites.length, kind: 'micro', ...candidate });
+        placed += 1;
+      }
+    });
+
+    return [...macroSites, ...microSites];
+  }
+
   function makeConfigAreaId(index) {
     const mixed = (((index + 1) * 2654435761) ^ 0x85ebca6b) >>> 0;
     return mixed.toString(36).toUpperCase().padStart(6, '0').slice(0, 6);
@@ -1906,31 +1973,18 @@ tailwind.config = {
     group.add(border);
 
     const rng = createSeededRandom(0xA3EA51);
-    const siteRows = 4;
-    const siteCols = 5;
-    const marginX = 0.95;
-    const marginZ = 0.88;
-    const stepX = (boardWidth - marginX * 2) / (siteCols - 1);
-    const stepZ = (boardHeight - marginZ * 2) / (siteRows - 1);
-    const initialSites = [];
+    const initialSites = buildAreasSites(bounds, rng);
 
-    for (let row = 0; row < siteRows; row += 1) {
-      for (let col = 0; col < siteCols; col += 1) {
-        const jitterX = (rng() - 0.5) * stepX * 0.62;
-        const jitterZ = (rng() - 0.5) * stepZ * 0.62;
-        initialSites.push({
-          index: initialSites.length,
-          x: bounds.minX + marginX + col * stepX + jitterX,
-          z: bounds.minZ + marginZ + row * stepZ + jitterZ
-        });
-      }
-    }
-
-    const relaxedSites = buildVoronoiCells(initialSites, bounds).map((cell, index) => ({
-      index,
-      x: Math.min(bounds.maxX - 0.52, Math.max(bounds.minX + 0.52, initialSites[index].x * 0.58 + cell.centroid.x * 0.42)),
-      z: Math.min(bounds.maxZ - 0.52, Math.max(bounds.minZ + 0.52, initialSites[index].z * 0.58 + cell.centroid.z * 0.42))
-    }));
+    const relaxedSites = buildVoronoiCells(initialSites, bounds).map((cell, index) => {
+      const source = initialSites[index];
+      const blend = source.kind === 'macro' ? 0.86 : 0.2;
+      return {
+        index,
+        kind: source.kind,
+        x: Math.min(bounds.maxX - 0.42, Math.max(bounds.minX + 0.42, source.x * (1 - blend) + cell.centroid.x * blend)),
+        z: Math.min(bounds.maxZ - 0.42, Math.max(bounds.minZ + 0.42, source.z * (1 - blend) + cell.centroid.z * blend))
+      };
+    });
 
     const areaCells = buildVoronoiCells(relaxedSites, bounds);
     const adjacency = buildVoronoiAdjacency(areaCells);
@@ -1988,7 +2042,7 @@ tailwind.config = {
       startedAt: 0,
       lastGrowthAt: 0,
       growthStep: 0,
-      maxAlive: 11,
+      maxAlive: 16,
       rng: createSeededRandom(0xA3EA52)
     };
 
