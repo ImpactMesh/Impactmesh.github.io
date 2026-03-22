@@ -2098,7 +2098,7 @@ tailwind.config = {
     hideOverlayLabel(configShardLabel);
     hideOverlayLabel(configHoverLabel);
     configRegionLabels.forEach(hideOverlayLabel);
-    configStageCaption.textContent = 'AREA MAP // CLICK TO INITIATE';
+    configStageCaption.textContent = 'AREA SURFACE // CLICK TO INITIATE';
     renderConfigScene();
 
     if (autoStart) startAreasGrowth();
@@ -2185,9 +2185,9 @@ tailwind.config = {
     setAreasCellState(seedIndex, 'stem-bright');
     styleOverlayTag(configCellLabel, 0xff6600);
     styleOverlayTag(configShardLabel, 0xffa347);
-    showOverlayLabel(configCellLabel, 'STEM AREA', seedCell.mesh.position);
+    showOverlayLabel(configCellLabel, 'STEM CELL', seedCell.mesh.position);
     hideOverlayLabel(configShardLabel);
-    configStageCaption.textContent = 'AREA MAP // STEM AREA INITIALIZING';
+    configStageCaption.textContent = 'AREA SURFACE // STEM CELL INITIALIZING';
     renderConfigScene();
   }
 
@@ -2209,7 +2209,7 @@ tailwind.config = {
 
     if (bestIndex !== null) {
       areasState.shardLabelIndex = bestIndex;
-      showOverlayLabel(configShardLabel, 'CLAIMED AREAS', areasState.cells[bestIndex].mesh.position);
+      showOverlayLabel(configShardLabel, 'SHARD CELLS', areasState.cells[bestIndex].mesh.position);
     }
   }
 
@@ -2266,7 +2266,7 @@ tailwind.config = {
     areasState.latest = nextFrontier;
     areasState.growthStep += 1;
     updateAreasShardLabel();
-    configStageCaption.textContent = `AREA MAP // EXPANSION WAVE ${String(areasState.growthStep).padStart(2, '0')}`;
+    configStageCaption.textContent = `AREA SURFACE // GROWTH WAVE ${String(areasState.growthStep).padStart(2, '0')}`;
 
     if (areasState.alive.size >= areasState.maxAlive || areasState.growthStep >= 9) {
       areasState.alive.forEach((index) => {
@@ -2291,7 +2291,7 @@ tailwind.config = {
         areasState.phase = 'grow';
         setAreasCellState(seedIndex, 'stem-bright');
         areasState.lastGrowthAt = time;
-        configStageCaption.textContent = 'AREA MAP // FIRST CLAIM';
+        configStageCaption.textContent = 'AREA SURFACE // FIRST DIVISION';
       }
     } else {
       const seedCell = areasState.cells[seedIndex];
