@@ -142,9 +142,6 @@ tailwind.config = {
   .mesh-ray-spin-mid {
     animation: mesh-ray-spin-ccw 24s linear infinite;
   }
-  .mesh-ray-spin-fast {
-    animation: mesh-ray-spin-cw 16s linear infinite;
-  }
   @keyframes mesh-ray-spin-cw {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
@@ -449,11 +446,6 @@ tailwind.config = {
     <div class="mesh-ray-layer mesh-ray-spin-mid opacity-25 transition-opacity duration-200 group-hover:opacity-45 scale-[0.82]">
       <svg viewBox="0 0 512 512">
         <path d="M40 40 L256 256 M480 480 L256 256 M40 472 L256 256 M472 40 L256 256" stroke="#FF6600" stroke-dasharray="7 5" stroke-width="1" fill="none"/>
-      </svg>
-    </div>
-    <div class="mesh-ray-layer mesh-ray-spin-fast opacity-15 transition-opacity duration-200 group-hover:opacity-30 scale-[0.64]">
-      <svg viewBox="0 0 512 512">
-        <path d="M40 40 L256 256 M480 480 L256 256 M40 472 L256 256 M472 40 L256 256" stroke="#FF6600" stroke-dasharray="5 6" stroke-width="1" fill="none"/>
       </svg>
     </div>
   </div>
