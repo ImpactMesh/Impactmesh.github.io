@@ -512,7 +512,7 @@ tailwind.config = {
     <div class="relative text-center mb-10 md:mb-12 transition-transform duration-200 group-hover:scale-[1.02]">
       <h2 class="text-[10px] text-primary tracking-[0.4em] mb-2 font-bold opacity-70">CONSENSUS_STATUS: ONLINE</h2>
       <h1 class="text-5xl md:text-7xl font-black text-primary electric-bloom leading-tight mb-4">GEOMETRIC SHARDING</h1>
-      <p class="text-xl md:text-2xl text-tertiary font-bold tracking-tight leading-tight yellow-bloom">CELLULAR CONFIGURATIONS (2D/3D)</p>
+      <p class="text-xl md:text-2xl text-tertiary font-bold tracking-tight leading-tight yellow-bloom">CELLULAR STRUCTURES (2D/3D)</p>
     </div>
 
     <!-- Central Configurations Trigger -->
@@ -708,7 +708,7 @@ tailwind.config = {
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
+<script src="./vendor/three.min.js"></script>
 <script>
   document.getElementById('current-year').textContent = new Date().getFullYear();
 
@@ -741,6 +741,9 @@ tailwind.config = {
       requestAnimationFrame(() => {
         initConfigScene();
         resizeConfigScene();
+        if (configRenderer && configScene && configCamera) {
+          configRenderer.render(configScene, configCamera);
+        }
       });
     });
   }
@@ -758,35 +761,31 @@ tailwind.config = {
     if (configRenderer || !window.THREE) return;
 
     configStage = document.getElementById('config-three-stage');
-    configRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    configRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     configRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    configRenderer.setClearColor(0x050505, 1);
+    configRenderer.setClearColor(0x070707, 1);
+    configRenderer.domElement.className = 'w-full h-full block';
     configStage.appendChild(configRenderer.domElement);
 
     configScene = new THREE.Scene();
+    configScene.background = new THREE.Color(0x070707);
     configCamera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
     configCamera.position.set(2.8, 2.2, 4.8);
+    configCamera.lookAt(0, 0, 0);
 
-    const ambient = new THREE.AmbientLight(0xff7a1a, 0.9);
+    const ambient = new THREE.AmbientLight(0xffffff, 1.2);
     configScene.add(ambient);
 
-    const keyLight = new THREE.PointLight(0xff6600, 18, 20, 2);
-    keyLight.position.set(3, 3, 5);
+    const keyLight = new THREE.DirectionalLight(0xff6600, 2.4);
+    keyLight.position.set(3, 4, 5);
     configScene.add(keyLight);
 
-    const rimLight = new THREE.PointLight(0xffcc00, 10, 18, 2);
+    const rimLight = new THREE.DirectionalLight(0xffcc00, 1.7);
     rimLight.position.set(-4, -2, 3);
     configScene.add(rimLight);
 
-    const geometry = new THREE.BoxGeometry(1.7, 1.7, 1.7);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x2a1206,
-      emissive: 0x1a0b03,
-      metalness: 0.2,
-      roughness: 0.35,
-      transparent: true,
-      opacity: 0.72
-    });
+    const geometry = new THREE.BoxGeometry(2.1, 2.1, 2.1);
+    const material = new THREE.MeshNormalMaterial();
     configCube = new THREE.Mesh(geometry, material);
     configScene.add(configCube);
 
@@ -795,11 +794,14 @@ tailwind.config = {
     configEdges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
     configCube.add(configEdges);
 
-    const grid = new THREE.GridHelper(10, 12, 0x4a1f08, 0x241108);
-    grid.position.y = -1.6;
+    const grid = new THREE.GridHelper(12, 14, 0xff6600, 0x2a1206);
+    grid.position.y = -2.1;
     configScene.add(grid);
 
-    const axesRing = new THREE.TorusGeometry(2.5, 0.015, 8, 128);
+    const axesHelper = new THREE.AxesHelper(2.8);
+    configScene.add(axesHelper);
+
+    const axesRing = new THREE.TorusGeometry(3.1, 0.025, 10, 160);
     const ringMaterial = new THREE.MeshBasicMaterial({ color: 0x4a1f08 });
     const ring = new THREE.Mesh(axesRing, ringMaterial);
     ring.rotation.x = Math.PI / 2;
@@ -816,7 +818,7 @@ tailwind.config = {
     const width = configStage.clientWidth;
     const height = configStage.clientHeight;
     if (!width || !height) return;
-    configRenderer.setSize(width, height, false);
+    configRenderer.setSize(width, height);
     configCamera.aspect = width / height;
     configCamera.updateProjectionMatrix();
   }
