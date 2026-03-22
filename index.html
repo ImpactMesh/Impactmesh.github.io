@@ -2123,7 +2123,7 @@ tailwind.config = {
     const edgePaths = buildHexEdgePaths(collectAreaEdges(memberIndexes));
     const meshes = [];
     const materials = [];
-    const lineThickness = 0.085;
+    const lineThickness = 0.058;
 
     edgePaths.forEach((edgePath) => {
       const points = buildAreaWorldPathPoints(edgePath.segments, edgePath.closed);
@@ -2259,10 +2259,14 @@ tailwind.config = {
     const areaCells = buildVoronoiCells(relaxedSites, bounds, boundaryPolygon);
     const adjacency = buildVoronoiAdjacency(areaCells);
     const cells = [];
+    const visibleAreaScale = 1;
 
     areaCells.forEach((cell, cellIndex) => {
       const centroid = computePolygonCentroid(cell.polygon);
-      const localPoints = cell.polygon.map((point) => new THREE.Vector2(point.x - centroid.x, -(point.z - centroid.z)));
+      const localPoints = cell.polygon.map((point) => new THREE.Vector2(
+        (point.x - centroid.x) * visibleAreaScale,
+        -((point.z - centroid.z) * visibleAreaScale)
+      ));
       const shape = new THREE.Shape(localPoints);
       const geometry = new THREE.ShapeGeometry(shape);
       const material = new THREE.MeshBasicMaterial({
