@@ -1982,34 +1982,35 @@ tailwind.config = {
     }));
   }
 
-  function collectHexagonalEdges(cells, radius, boundaryOnly) {
-    const edgeMap = new Map();
+  function collectHexagonalEdges(memberIndexes, radius) {
+    if (!hexagonalState) return [];
 
-    function pointKey(x, z) {
-      return `${x.toFixed(4)},${z.toFixed(4)}`;
-    }
+    const memberSet = new Set(memberIndexes);
+    const sideDirections = [
+      { dq: 1, dr: 0, edgeIndex: 5 },
+      { dq: 1, dr: -1, edgeIndex: 0 },
+      { dq: 0, dr: -1, edgeIndex: 1 },
+      { dq: -1, dr: 0, edgeIndex: 2 },
+      { dq: -1, dr: 1, edgeIndex: 3 },
+      { dq: 0, dr: 1, edgeIndex: 4 }
+    ];
+    const edges = [];
 
-    function edgeKey(a, b) {
-      return pointKey(a.x, a.z) < pointKey(b.x, b.z)
-        ? `${pointKey(a.x, a.z)}|${pointKey(b.x, b.z)}`
-        : `${pointKey(b.x, b.z)}|${pointKey(a.x, a.z)}`;
-    }
-
-    cells.forEach((cell) => {
+    memberIndexes.forEach((index) => {
+      const cell = hexagonalState.cells[index];
       const corners = getHexagonalCellCorners(cell, radius);
-      corners.forEach((start, cornerIndex) => {
-        const end = corners[(cornerIndex + 1) % corners.length];
-        const key = edgeKey(start, end);
-        if (!boundaryOnly) {
-          if (!edgeMap.has(key)) edgeMap.set(key, { start, end });
-          return;
-        }
-        if (edgeMap.has(key)) edgeMap.delete(key);
-        else edgeMap.set(key, { start, end });
+
+      sideDirections.forEach(({ dq, dr, edgeIndex }) => {
+        const neighborIndex = hexagonalState.cellIndexByKey.get(`${cell.q + dq},${cell.r + dr}`);
+        if (neighborIndex !== undefined && memberSet.has(neighborIndex)) return;
+        edges.push({
+          start: corners[edgeIndex],
+          end: corners[(edgeIndex + 1) % corners.length]
+        });
       });
     });
 
-    return [...edgeMap.values()];
+    return edges;
   }
 
   function addHexEdgeMeshes(targetGroup, edges, options = {}) {
@@ -2040,11 +2041,11 @@ tailwind.config = {
   function buildHexagonalRegionOutlineMeshes(region, memberIndexes) {
     if (!hexagonalState || !memberIndexes.length) return [];
 
-    const edges = collectHexagonalEdges(memberIndexes.map((index) => hexagonalState.cells[index]), hexagonalState.hexRadius, true);
+    const edges = collectHexagonalEdges(memberIndexes, hexagonalState.cellRadius);
     const { meshes, materials } = addHexEdgeMeshes(hexagonalState.regionOverlayGroup, edges, {
       color: region.color,
       opacity: 0.88,
-      lineThickness: hexagonalState.hexRadius * 0.095,
+      lineThickness: hexagonalState.cellRadius * 0.105,
       lineHeight: region.lineHeight
     });
     region.pulseMaterials.push(...materials);
