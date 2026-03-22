@@ -1708,10 +1708,11 @@ tailwind.config = {
     configOrthoCamera.up.set(0, 0, -1);
     configOrthoCamera.lookAt(0, 0, 0);
 
-    const rows = 9;
-    const cols = 9;
-    const hexRadius = 0.52;
-    const cellRadius = hexRadius * 0.96;
+    const rowLengths = [7, 6, 7, 6, 7];
+    const rows = rowLengths.length;
+    const cols = Math.max(...rowLengths);
+    const hexRadius = 0.58;
+    const cellRadius = hexRadius * 0.84;
     const hexHeight = 0.02;
     const xStep = Math.sqrt(3) * hexRadius;
     const zStep = 1.5 * hexRadius;
@@ -1721,30 +1722,20 @@ tailwind.config = {
     let minZ = Infinity;
     let maxZ = -Infinity;
 
-    for (let row = 0; row < rows; row += 1) {
-      const rowOffset = (row & 1) ? xStep * 0.5 : 0;
-      for (let col = 0; col < cols; col += 1) {
-        const rawX = col * xStep + rowOffset;
-        const rawZ = row * zStep;
-        layout.push({ row, col, rawX, rawZ });
-        minX = Math.min(minX, rawX);
-        maxX = Math.max(maxX, rawX);
-        minZ = Math.min(minZ, rawZ);
-        maxZ = Math.max(maxZ, rawZ);
+    rowLengths.forEach((length, row) => {
+      for (let col = 0; col < length; col += 1) {
+        const x = (col - (length - 1) / 2) * xStep;
+        const z = (row - (rows - 1) / 2) * zStep;
+        layout.push({ row, col, q: col - Math.floor(length / 2), r: row - Math.floor(rows / 2), x, z });
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minZ = Math.min(minZ, z);
+        maxZ = Math.max(maxZ, z);
       }
-    }
-
-    const centerX = (minX + maxX) * 0.5;
-    const centerZ = (minZ + maxZ) * 0.5;
-    layout.forEach((cell) => {
-      cell.x = cell.rawX - centerX;
-      cell.z = cell.rawZ - centerZ;
-      cell.q = cell.col - Math.floor((cell.row - (cell.row & 1)) / 2);
-      cell.r = cell.row;
     });
 
-    const boardWidth = (maxX - minX) + hexRadius * 3.8;
-    const boardHeight = (maxZ - minZ) + hexRadius * 3.8;
+    const boardWidth = (maxX - minX) + hexRadius * 4.6;
+    const boardHeight = (maxZ - minZ) + hexRadius * 4.2;
     const group = new THREE.Group();
 
     const base = new THREE.Mesh(
@@ -1755,43 +1746,23 @@ tailwind.config = {
     base.position.y = -0.08;
     group.add(base);
 
-    const border = new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.BoxGeometry(boardWidth + 0.25, 0.02, boardHeight + 0.25)),
-      new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.16 })
-    );
-    border.position.y = -0.01;
-    group.add(border);
-
-    const regionOverlayGroup = new THREE.Group();
-    group.add(regionOverlayGroup);
-
     const cellGeometry = new THREE.CylinderGeometry(cellRadius, cellRadius, hexHeight, 6);
     const cells = [];
     const cellIndexByKey = new Map();
 
     layout.forEach(({ row, col, q, r, x, z }) => {
       const material = new THREE.MeshBasicMaterial({
-        color: 0xb46d2f,
+        color: 0xc27834,
         transparent: true,
-        opacity: 0.38
+        opacity: 0.82
       });
       const mesh = new THREE.Mesh(cellGeometry, material);
       mesh.rotation.y = Math.PI / 6;
       mesh.position.set(x, 0.01, z);
       mesh.userData.cellIndex = cells.length;
       group.add(mesh);
-      cells.push({ row, col, q, r, mesh, material, cellId: makeConfigCellId(row, col), state: 'dead', baseOpacity: 0.38, pulseOffset: 0 });
-      cellIndexByKey.set(`${q},${r}`, cells.length - 1);
-    });
-
-    const latticeGroup = new THREE.Group();
-    group.add(latticeGroup);
-    const latticeEdges = collectHexagonalEdges(cells, hexRadius, false);
-    addHexEdgeMeshes(latticeGroup, latticeEdges, {
-      color: 0xffa347,
-      opacity: 0.62,
-      lineThickness: hexRadius * 0.035,
-      lineHeight: 0.03
+      cells.push({ row, col, q, r, mesh, material, cellId: makeConfigCellId(row, col), state: 'proof', baseOpacity: 0.82, pulseOffset: 0 });
+      cellIndexByKey.set(`${row},${col}`, cells.length - 1);
     });
 
     configScene.add(group);
@@ -1803,7 +1774,7 @@ tailwind.config = {
       cellRadius,
       cells,
       cellIndexByKey,
-      regionOverlayGroup,
+      regionOverlayGroup: null,
       regions: [],
       running: false,
       phase: 'proof',
