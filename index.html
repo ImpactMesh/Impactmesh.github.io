@@ -1900,28 +1900,33 @@ tailwind.config = {
   }
 
   function buildAreasSites(bounds, rng, boundaryPolygon) {
+    const centerX = (bounds.minX + bounds.maxX) * 0.5;
+    const centerZ = (bounds.minZ + bounds.maxZ) * 0.5;
+    const halfWidth = (bounds.maxX - bounds.minX) * 0.5;
+    const halfHeight = (bounds.maxZ - bounds.minZ) * 0.5;
     const macroBlueprint = [
-      { x: -0.34, z: -0.22 },
-      { x: 0.28, z: -0.08 },
-      { x: -0.02, z: 0.31 }
+      { x: -0.78, z: -0.16 },
+      { x: 0.76, z: -0.12 },
+      { x: 0.1, z: 0.72 }
     ];
     const macroSites = macroBlueprint.map((entry, index) => ({
       index,
       kind: 'macro',
-      x: entry.x * (bounds.maxX - bounds.minX) * 0.5 + (rng() - 0.5) * 0.55,
-      z: entry.z * (bounds.maxZ - bounds.minZ) * 0.5 + (rng() - 0.5) * 0.55
+      x: centerX + entry.x * halfWidth * 0.84 + (rng() - 0.5) * 0.32,
+      z: centerZ + entry.z * halfHeight * 0.84 + (rng() - 0.5) * 0.32
     }));
 
     const clusterCenters = [
-      { x: -2.35, z: -2.15 },
-      { x: 2.45, z: 2.05 },
-      { x: 3.15, z: -1.85 }
+      { x: centerX - 1.25, z: centerZ - 0.78 },
+      { x: centerX + 1.18, z: centerZ - 0.62 },
+      { x: centerX - 0.38, z: centerZ + 0.98 },
+      { x: centerX + 0.82, z: centerZ + 0.74 }
     ];
     const microSites = [];
-    const macroClearance = 1.75;
-    const dispersedTarget = 29;
-    const clusteredPerCenter = 6;
-    const totalTarget = 50;
+    const macroClearance = 1.55;
+    const dispersedTarget = 40;
+    const clusteredPerCenter = 8;
+    const totalTarget = 75;
 
     function insideBoundary(candidate) {
       return pointInPolygon(candidate, boundaryPolygon);
@@ -1931,19 +1936,27 @@ tailwind.config = {
       return Math.min(...macroSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z))) >= macroClearance;
     }
 
-    let attempts = 0;
-    while (microSites.length < dispersedTarget && attempts < 12000) {
-      attempts += 1;
-      const candidate = {
-        x: bounds.minX + 0.48 + rng() * ((bounds.maxX - bounds.minX) - 0.96),
-        z: bounds.minZ + 0.48 + rng() * ((bounds.maxZ - bounds.minZ) - 0.96)
+    function sampleCenterBiasedCandidate() {
+      const px = (rng() * 2) - 1;
+      const pz = (rng() * 2) - 1;
+      const biasedX = Math.sign(px) * Math.pow(Math.abs(px), 1.65);
+      const biasedZ = Math.sign(pz) * Math.pow(Math.abs(pz), 1.65);
+      return {
+        x: centerX + biasedX * (halfWidth - 0.52),
+        z: centerZ + biasedZ * (halfHeight - 0.52)
       };
+    }
+
+    let attempts = 0;
+    while (microSites.length < dispersedTarget && attempts < 14000) {
+      attempts += 1;
+      const candidate = sampleCenterBiasedCandidate();
       if (!insideBoundary(candidate)) continue;
       if (!farFromMacros(candidate)) continue;
       const minDistance = microSites.length
         ? Math.min(...microSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z)))
         : Infinity;
-      if (minDistance < 0.86) continue;
+      if (minDistance < 0.68) continue;
       microSites.push({ index: macroSites.length + microSites.length, kind: 'micro', ...candidate });
     }
 
@@ -1964,25 +1977,27 @@ tailwind.config = {
         const minDistance = microSites.length
           ? Math.min(...microSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z)))
           : Infinity;
-        if (minDistance < 0.2) continue;
+        if (minDistance < 0.16) continue;
         microSites.push({ index: macroSites.length + microSites.length, kind: 'micro', ...candidate });
         placed += 1;
       }
     });
 
     let fallbackAttempts = 0;
-    while (macroSites.length + microSites.length < totalTarget && fallbackAttempts < 16000) {
+    while (macroSites.length + microSites.length < totalTarget && fallbackAttempts < 20000) {
       fallbackAttempts += 1;
-      const candidate = {
-        x: bounds.minX + 0.4 + rng() * ((bounds.maxX - bounds.minX) - 0.8),
-        z: bounds.minZ + 0.4 + rng() * ((bounds.maxZ - bounds.minZ) - 0.8)
-      };
+      const candidate = fallbackAttempts % 3 === 0
+        ? {
+            x: bounds.minX + 0.4 + rng() * ((bounds.maxX - bounds.minX) - 0.8),
+            z: bounds.minZ + 0.4 + rng() * ((bounds.maxZ - bounds.minZ) - 0.8)
+          }
+        : sampleCenterBiasedCandidate();
       if (!insideBoundary(candidate)) continue;
       if (!farFromMacros(candidate)) continue;
       const minDistance = microSites.length
         ? Math.min(...microSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z)))
         : Infinity;
-      if (minDistance < 0.17) continue;
+      if (minDistance < 0.14) continue;
       microSites.push({ index: macroSites.length + microSites.length, kind: 'micro', ...candidate });
     }
 
@@ -2322,7 +2337,7 @@ tailwind.config = {
       orbitRadius: Math.max(boardWidth, boardHeight) * 0.86,
       orbitHeight: Math.max(boardWidth, boardHeight) * 0.62,
       orbitSpeed: 0.12,
-      maxAlive: 38,
+      maxAlive: 24,
       rng: createSeededRandom(0xA3EA52)
     };
 
