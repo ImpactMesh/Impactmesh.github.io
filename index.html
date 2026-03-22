@@ -987,27 +987,8 @@ tailwind.config = {
     border.position.y = -0.01;
     group.add(border);
 
-    const regionDefinitions = [
-      { label: configRegionLabels[0], text: 'SEQUENCER REGION 1', color: 0xff6600, centerX: -1.55, centerZ: -1.2, width: 4.6, height: 3.8 },
-      { label: configRegionLabels[1], text: 'SEQUENCER REGION 2', color: 0xffcc00, centerX: 0.2, centerZ: -0.35, width: 4.7, height: 3.6 },
-      { label: configRegionLabels[2], text: 'SEQUENCER REGION 3', color: 0xff3300, centerX: 1.7, centerZ: -1.15, width: 4.2, height: 3.4 }
-    ];
-
-    regionDefinitions.forEach((region) => {
-      const halfW = region.width / 2;
-      const halfH = region.height / 2;
-      const points = [
-        new THREE.Vector3(region.centerX - halfW, 0.04, region.centerZ - halfH),
-        new THREE.Vector3(region.centerX + halfW, 0.04, region.centerZ - halfH),
-        new THREE.Vector3(region.centerX + halfW, 0.04, region.centerZ + halfH),
-        new THREE.Vector3(region.centerX - halfW, 0.04, region.centerZ + halfH)
-      ];
-      const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      const material = new THREE.LineBasicMaterial({ color: region.color, transparent: true, opacity: 0.34 });
-      const line = new THREE.LineLoop(geometry, material);
-      group.add(line);
-      showOverlayLabel(region.label, region.text, new THREE.Vector3(region.centerX, 0.04, region.centerZ - halfH));
-    });
+    const regionOverlayGroup = new THREE.Group();
+    group.add(regionOverlayGroup);
 
     const cellGeometry = new THREE.PlaneGeometry(cellSize, cellSize);
     const cells = [];
@@ -1039,6 +1020,8 @@ tailwind.config = {
       cellSize,
       spacing,
       cells,
+      regionOverlayGroup,
+      regions: [],
       running: false,
       phase: 'idle',
       alive: new Set(),
@@ -1161,6 +1144,153 @@ tailwind.config = {
     return getReticularNeighbors(index).filter((neighbor) => reticularState.alive.has(neighbor)).length;
   }
 
+  function createReticularRegions(seedCell) {
+    return [
+      {
+        label: configRegionLabels[0],
+        text: 'SEQUENCER REGION 1',
+        color: 0xff6600,
+        minCells: 3,
+        labelOffsetX: -1.4,
+        labelOffsetZ: -0.7,
+        includes: (cell) => {
+          const dr = cell.row - seedCell.row;
+          const dc = cell.col - (seedCell.col - 2);
+          return dr * dr + dc * dc <= 8;
+        },
+        lines: []
+      },
+      {
+        label: configRegionLabels[1],
+        text: 'SEQUENCER REGION 2',
+        color: 0xffcc00,
+        minCells: 4,
+        labelOffsetX: 0,
+        labelOffsetZ: -1.15,
+        includes: (cell) => {
+          const dr = cell.row - seedCell.row;
+          const dc = cell.col - seedCell.col;
+          return dr * dr + dc * dc <= 6;
+        },
+        lines: []
+      },
+      {
+        label: configRegionLabels[2],
+        text: 'SEQUENCER REGION 3',
+        color: 0xff3b1f,
+        minCells: 3,
+        labelOffsetX: 1.4,
+        labelOffsetZ: -0.7,
+        includes: (cell) => {
+          const dr = cell.row - seedCell.row;
+          const dc = cell.col - (seedCell.col + 2);
+          return dr * dr + dc * dc <= 8;
+        },
+        lines: []
+      }
+    ];
+  }
+
+  function getReticularRegionMembers(region) {
+    if (!reticularState) return [];
+    return [...reticularState.alive].filter((index) => region.includes(reticularState.cells[index]));
+  }
+
+  function clearReticularRegionLines(region) {
+    if (!reticularState || !region?.lines?.length) return;
+    region.lines.forEach((line) => {
+      reticularState.regionOverlayGroup.remove(line);
+      line.geometry?.dispose?.();
+      line.material?.dispose?.();
+    });
+    region.lines = [];
+  }
+
+  function buildReticularRegionOutline(memberIndexes) {
+    if (!reticularState || !memberIndexes.length) return null;
+
+    const half = reticularState.spacing * 0.5;
+    const edgeMap = new Map();
+    const points = [];
+
+    function pointKey(x, z) {
+      return `${x.toFixed(4)},${z.toFixed(4)}`;
+    }
+
+    function edgeKey(a, b) {
+      return pointKey(a.x, a.z) < pointKey(b.x, b.z)
+        ? `${pointKey(a.x, a.z)}|${pointKey(b.x, b.z)}`
+        : `${pointKey(b.x, b.z)}|${pointKey(a.x, a.z)}`;
+    }
+
+    memberIndexes.forEach((index) => {
+      const { mesh } = reticularState.cells[index];
+      const x = mesh.position.x;
+      const z = mesh.position.z;
+      const tl = { x: x - half, z: z - half };
+      const tr = { x: x + half, z: z - half };
+      const br = { x: x + half, z: z + half };
+      const bl = { x: x - half, z: z + half };
+      [
+        [tl, tr],
+        [tr, br],
+        [br, bl],
+        [bl, tl]
+      ].forEach(([start, end]) => {
+        const key = edgeKey(start, end);
+        if (edgeMap.has(key)) edgeMap.delete(key);
+        else edgeMap.set(key, { start, end });
+      });
+    });
+
+    edgeMap.forEach(({ start, end }) => {
+      points.push(new THREE.Vector3(start.x, 0.06, start.z));
+      points.push(new THREE.Vector3(end.x, 0.06, end.z));
+    });
+
+    return points.length ? new THREE.BufferGeometry().setFromPoints(points) : null;
+  }
+
+  function getReticularRegionLabelPosition(region, memberIndexes) {
+    const memberCells = memberIndexes.map((index) => reticularState.cells[index]);
+    const minX = Math.min(...memberCells.map((cell) => cell.mesh.position.x));
+    const maxX = Math.max(...memberCells.map((cell) => cell.mesh.position.x));
+    const minZ = Math.min(...memberCells.map((cell) => cell.mesh.position.z));
+    return new THREE.Vector3(
+      (minX + maxX) * 0.5 + region.labelOffsetX * reticularState.spacing,
+      0.06,
+      minZ + region.labelOffsetZ * reticularState.spacing
+    );
+  }
+
+  function updateReticularRegions() {
+    if (!reticularState?.regions?.length) return;
+
+    reticularState.regions.forEach((region) => {
+      const memberIndexes = getReticularRegionMembers(region);
+      clearReticularRegionLines(region);
+
+      if (memberIndexes.length < region.minCells) {
+        hideOverlayLabel(region.label);
+        return;
+      }
+
+      const geometry = buildReticularRegionOutline(memberIndexes);
+      if (!geometry) {
+        hideOverlayLabel(region.label);
+        return;
+      }
+
+      const line = new THREE.LineSegments(
+        geometry,
+        new THREE.LineBasicMaterial({ color: region.color, transparent: true, opacity: 0.68 })
+      );
+      reticularState.regionOverlayGroup.add(line);
+      region.lines = [line];
+      showOverlayLabel(region.label, region.text, getReticularRegionLabelPosition(region, memberIndexes));
+    });
+  }
+
   function startReticularGrowth() {
     if (!reticularState) {
       prepareReticularConfiguration(true);
@@ -1168,6 +1298,10 @@ tailwind.config = {
     }
 
     resetReticularCells();
+    reticularState.regions.forEach((region) => {
+      clearReticularRegionLines(region);
+      hideOverlayLabel(region.label);
+    });
 
     const centerRow = Math.floor(reticularState.rows / 2);
     const centerCol = Math.floor(reticularState.cols / 2);
@@ -1182,6 +1316,7 @@ tailwind.config = {
     reticularState.latest = new Set([seedIndex]);
     reticularState.seedIndex = seedIndex;
     reticularState.shardLabelIndex = null;
+    reticularState.regions = createReticularRegions(seedCell);
     reticularState.startedAt = performance.now() * 0.001;
     reticularState.lastGrowthAt = reticularState.startedAt;
     reticularState.growthStep = 0;
@@ -1189,6 +1324,7 @@ tailwind.config = {
     setReticularCellState(seedIndex, 'stem-bright');
     showOverlayLabel(configCellLabel, 'STEM CELL', seedCell.mesh.position);
     hideOverlayLabel(configShardLabel);
+    updateReticularRegions();
     configStageCaption.textContent = '2D TOP VIEW // STEM CELL INITIALIZING';
     renderConfigScene();
   }
@@ -1254,6 +1390,7 @@ tailwind.config = {
     reticularState.latest = nextFrontier;
     reticularState.growthStep += 1;
     updateShardCellLabel();
+    updateReticularRegions();
     configStageCaption.textContent = `2D TOP VIEW // GROWTH WAVE ${String(reticularState.growthStep).padStart(2, '0')}`;
 
     if (reticularState.alive.size >= reticularState.maxAlive || reticularState.growthStep >= 12) {
@@ -1264,7 +1401,7 @@ tailwind.config = {
   }
 
   function updateReticularAnimation(time) {
-    if (!reticularState || !reticularState.seedIndex) return;
+    if (!reticularState || reticularState.seedIndex === null) return;
 
     const seedIndex = reticularState.seedIndex;
     const elapsed = time - reticularState.startedAt;
