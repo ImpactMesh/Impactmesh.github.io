@@ -791,6 +791,7 @@ tailwind.config = {
   let configCurrentGroup = null;
   let configSelectedMode = null;
   let orthogonalState = null;
+  let hexagonalState = null;
 
   const CONFIG_BUTTON_ACTIVE = 'w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom';
   const CONFIG_BUTTON_INACTIVE = 'w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all';
@@ -973,6 +974,7 @@ tailwind.config = {
       configCurrentGroup = null;
     }
     orthogonalState = null;
+    hexagonalState = null;
     configHoveredCellIndex = null;
     hideOverlayLabel(configCellLabel);
     hideOverlayLabel(configShardLabel);
@@ -999,6 +1001,12 @@ tailwind.config = {
     });
   }
 
+  function getActiveGridState() {
+    if (configSelectedMode === '2d-orthogonal') return orthogonalState;
+    if (configSelectedMode === '2d-hexagonal') return hexagonalState;
+    return null;
+  }
+
   function selectConfigMode(mode) {
     configSelectedMode = mode;
     setConfigButtonState(mode);
@@ -1007,6 +1015,12 @@ tailwind.config = {
     if (mode === '2d-orthogonal') {
       if (!orthogonalState) prepareOrthogonalConfiguration(false);
       startOrthogonalGrowth();
+      return;
+    }
+
+    if (mode === '2d-hexagonal') {
+      if (!hexagonalState) prepareHexagonalConfiguration(false);
+      startHexagonalGrowth();
       return;
     }
 
@@ -1454,7 +1468,8 @@ tailwind.config = {
   }
 
   function handleConfigPointerMove(event) {
-    if (!configRenderer || !configStage || !configRaycaster || !configActiveCamera || !orthogonalState?.cells?.length) return;
+    const activeState = getActiveGridState();
+    if (!configRenderer || !configStage || !configRaycaster || !configActiveCamera || !activeState?.cells?.length) return;
 
     const rect = configRenderer.domElement.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1462,7 +1477,7 @@ tailwind.config = {
     configPointer.set(x, y);
     configRaycaster.setFromCamera(configPointer, configActiveCamera);
 
-    const intersects = configRaycaster.intersectObjects(orthogonalState.cells.map((cell) => cell.mesh), false);
+    const intersects = configRaycaster.intersectObjects(activeState.cells.map((cell) => cell.mesh), false);
     const hit = intersects.find((entry) => entry.object?.userData?.cellIndex !== undefined);
     if (!hit) {
       clearConfigHover();
@@ -1470,15 +1485,15 @@ tailwind.config = {
     }
 
     const cellIndex = hit.object.userData.cellIndex;
-    const cell = orthogonalState.cells[cellIndex];
-    if (!cell || !orthogonalState.alive.has(cellIndex)) {
+    const cell = activeState.cells[cellIndex];
+    if (!cell || !activeState.alive.has(cellIndex)) {
       clearConfigHover();
       return;
     }
 
     configHoveredCellIndex = cellIndex;
     styleOverlayTag(configHoverLabel, 0xffa347);
-    const labelPrefix = cellIndex === orthogonalState.seedIndex ? 'STEM' : 'SHARD';
+    const labelPrefix = cellIndex === activeState.seedIndex ? 'STEM' : 'SHARD';
     showOverlayLabel(configHoverLabel, `${labelPrefix} ID: ${cell.cellId}`, cell.mesh.position);
   }
 
@@ -1685,6 +1700,561 @@ tailwind.config = {
     updateOverlayLabelPosition(configHoverLabel);
   }
 
+  function prepareHexagonalConfiguration(autoStart) {
+    clearConfigGroup();
+
+    configSelectedMode = '2d-hexagonal';
+    configActiveCamera = configPerspectiveCamera;
+
+    const rows = 9;
+    const cols = 9;
+    const hexRadius = 0.58;
+    const cellRadius = hexRadius * 0.9;
+    const hexHeight = 0.02;
+    const xStep = Math.sqrt(3) * hexRadius;
+    const zStep = 1.5 * hexRadius;
+    const centerRow = Math.floor(rows / 2);
+    const centerCol = Math.floor(cols / 2);
+    const layout = [];
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        const q = col - centerCol;
+        const r = row - centerRow;
+        const x = xStep * (q + r / 2);
+        const z = zStep * r;
+        layout.push({ row, col, q, r, x, z });
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minZ = Math.min(minZ, z);
+        maxZ = Math.max(maxZ, z);
+      }
+    }
+
+    const boardWidth = (maxX - minX) + hexRadius * 3.4;
+    const boardHeight = (maxZ - minZ) + hexRadius * 3.4;
+    const group = new THREE.Group();
+
+    const base = new THREE.Mesh(
+      new THREE.PlaneGeometry(boardWidth + 1.8, boardHeight + 1.8),
+      new THREE.MeshBasicMaterial({ color: 0x090909 })
+    );
+    base.rotation.x = -Math.PI / 2;
+    base.position.y = -0.08;
+    group.add(base);
+
+    const gridHelper = new THREE.GridHelper(Math.max(boardWidth, boardHeight) + 1.8, 18, 0x5a2408, 0x241108);
+    gridHelper.position.y = -0.04;
+    group.add(gridHelper);
+
+    const border = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(boardWidth + 0.5, 0.02, boardHeight + 0.5)),
+      new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.18 })
+    );
+    border.position.y = -0.01;
+    group.add(border);
+
+    const regionOverlayGroup = new THREE.Group();
+    group.add(regionOverlayGroup);
+
+    const cellGeometry = new THREE.CylinderGeometry(cellRadius, cellRadius, hexHeight, 6);
+    const cells = [];
+    const cellIndexByKey = new Map();
+
+    layout.forEach(({ row, col, q, r, x, z }) => {
+      const material = new THREE.MeshBasicMaterial({
+        color: 0x130804,
+        transparent: true,
+        opacity: 0.14
+      });
+      const mesh = new THREE.Mesh(cellGeometry, material);
+      mesh.rotation.y = Math.PI / 6;
+      mesh.position.set(x, 0.01, z);
+      mesh.userData.cellIndex = cells.length;
+      group.add(mesh);
+      cells.push({ row, col, q, r, mesh, material, cellId: makeConfigCellId(row, col), state: 'dead', baseOpacity: 0.14, pulseOffset: Math.random() * Math.PI * 2 });
+      cellIndexByKey.set(`${q},${r}`, cells.length - 1);
+    });
+
+    configScene.add(group);
+    configCurrentGroup = group;
+    hexagonalState = {
+      rows,
+      cols,
+      hexRadius,
+      cellRadius,
+      cells,
+      cellIndexByKey,
+      regionOverlayGroup,
+      regions: [],
+      running: false,
+      phase: 'idle',
+      alive: new Set(),
+      latest: new Set(),
+      seedIndex: null,
+      shardLabelIndex: null,
+      startedAt: 0,
+      lastGrowthAt: 0,
+      growthStep: 0,
+      orbitRadius: Math.max(boardWidth, boardHeight) * 0.88,
+      orbitHeight: Math.max(boardWidth, boardHeight) * 0.64,
+      orbitSpeed: 0.12,
+      maxAlive: 44
+    };
+
+    renderConfigScene();
+
+    if (autoStart) startHexagonalGrowth();
+  }
+
+  function resetHexagonalCells() {
+    if (!hexagonalState) return;
+    hexagonalState.cells.forEach((cell) => {
+      cell.state = 'dead';
+      cell.baseOpacity = 0.14;
+      cell.material.color.setHex(0x130804);
+      cell.material.opacity = 0.14;
+    });
+  }
+
+  function setHexagonalCellState(index, state) {
+    if (!hexagonalState) return;
+    const cell = hexagonalState.cells[index];
+    if (!cell) return;
+
+    cell.state = state;
+
+    if (state === 'dead') {
+      cell.baseOpacity = 0.14;
+      cell.material.color.setHex(0x130804);
+      cell.material.opacity = cell.baseOpacity;
+      return;
+    }
+    if (state === 'stem-bright') {
+      cell.baseOpacity = 0.98;
+      cell.material.color.setHex(0xff6600);
+      cell.material.opacity = cell.baseOpacity;
+      return;
+    }
+    if (state === 'stem-dim') {
+      cell.baseOpacity = 0.24;
+      cell.material.color.setHex(0x4d1b05);
+      cell.material.opacity = cell.baseOpacity;
+      return;
+    }
+    if (state === 'core') {
+      cell.baseOpacity = 0.68;
+      cell.material.color.setHex(0xd97a32);
+      cell.material.opacity = cell.baseOpacity;
+      return;
+    }
+    if (state === 'frontier') {
+      cell.baseOpacity = 0.78;
+      cell.material.color.setHex(0xf0a45a);
+      cell.material.opacity = cell.baseOpacity;
+    }
+  }
+
+  function getHexagonalNeighbors(index) {
+    if (!hexagonalState) return [];
+    const { q, r } = hexagonalState.cells[index];
+    const offsets = [
+      [1, 0],
+      [1, -1],
+      [0, -1],
+      [-1, 0],
+      [-1, 1],
+      [0, 1]
+    ];
+
+    return offsets
+      .map(([dq, dr]) => hexagonalState.cellIndexByKey.get(`${q + dq},${r + dr}`))
+      .filter((neighbor) => neighbor !== undefined);
+  }
+
+  function countAliveHexagonalNeighbors(index) {
+    if (!hexagonalState) return 0;
+    return getHexagonalNeighbors(index).filter((neighbor) => hexagonalState.alive.has(neighbor)).length;
+  }
+
+  function createHexagonalRegions() {
+    return [
+      {
+        index: 0,
+        label: configRegionLabels[0],
+        text: 'SHARD SET 1: SERVER 7A91C2',
+        color: 0x50f080,
+        minCells: 2,
+        labelOffsetX: -1.7,
+        labelOffsetZ: -1.0,
+        pulsePhase: 0,
+        lineHeight: 0.09,
+        lines: [],
+        pulseMaterials: []
+      },
+      {
+        index: 1,
+        label: configRegionLabels[1],
+        text: 'SHARD SET 2: SERVER C4F8D1',
+        color: 0xffc31a,
+        minCells: 2,
+        labelOffsetX: 0,
+        labelOffsetZ: -1.55,
+        pulsePhase: 1.4,
+        lineHeight: 0.22,
+        lines: [],
+        pulseMaterials: []
+      },
+      {
+        index: 2,
+        label: configRegionLabels[2],
+        text: 'SHARD SET 3: SERVER 91FE27',
+        color: 0xa0fff5,
+        minCells: 2,
+        labelOffsetX: 1.7,
+        labelOffsetZ: -1.0,
+        pulsePhase: 2.3,
+        lineHeight: 0.36,
+        lines: [],
+        pulseMaterials: []
+      }
+    ];
+  }
+
+  function getHexagonalRegionMembership(index) {
+    if (!hexagonalState || hexagonalState.seedIndex === null) return [];
+    if (index === hexagonalState.seedIndex) return [0, 1, 2];
+
+    const cell = hexagonalState.cells[index];
+    const seedCell = hexagonalState.cells[hexagonalState.seedIndex];
+    const dq = cell.q - seedCell.q;
+    const dr = cell.r - seedCell.r;
+    const lateral = dq + dr * 0.5 + Math.sin((cell.row + 1) * 0.71 + (cell.col + 1) * 0.52) * 0.14;
+    const sweep = Math.abs(dr * 0.9 - dq * 0.18);
+    const centralBias = Math.abs(lateral) + sweep * 0.44;
+
+    if (centralBias <= 1.95) return [1];
+    if (Math.abs(dr) <= 1 && lateral >= -2.15 && lateral <= -1.45) return [0, 1];
+    if (Math.abs(dr) <= 1 && lateral >= 1.45 && lateral <= 2.15) return [1, 2];
+    if (lateral < 0) return [0];
+    return [2];
+  }
+
+  function getHexagonalRegionMembers(region) {
+    if (!hexagonalState) return [];
+    return [...hexagonalState.alive].filter((index) => getHexagonalRegionMembership(index).includes(region.index));
+  }
+
+  function clearHexagonalRegionLines(region) {
+    if (!hexagonalState) return;
+    region?.lines?.forEach((mesh) => {
+      hexagonalState.regionOverlayGroup.remove(mesh);
+      mesh.geometry?.dispose?.();
+      mesh.material?.dispose?.();
+    });
+    if (region) {
+      region.lines = [];
+      region.pulseMaterials = [];
+    }
+  }
+
+  function buildHexagonalRegionOutlineMeshes(region, memberIndexes) {
+    if (!hexagonalState || !memberIndexes.length) return [];
+
+    const radius = hexagonalState.hexRadius;
+    const edgeMap = new Map();
+    const meshes = [];
+    const jointKeys = new Set();
+    const lineThickness = radius * 0.15;
+    const cornerOffset = Math.PI / 6;
+
+    function pointKey(x, z) {
+      return `${x.toFixed(4)},${z.toFixed(4)}`;
+    }
+
+    function edgeKey(a, b) {
+      return pointKey(a.x, a.z) < pointKey(b.x, b.z)
+        ? `${pointKey(a.x, a.z)}|${pointKey(b.x, b.z)}`
+        : `${pointKey(b.x, b.z)}|${pointKey(a.x, a.z)}`;
+    }
+
+    function addSolidSegment(start, end) {
+      const dx = end.x - start.x;
+      const dz = end.z - start.z;
+      const length = Math.hypot(dx, dz) + lineThickness;
+      const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.88, depthWrite: false });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(length, 0.014, lineThickness), material);
+      mesh.position.set((start.x + end.x) * 0.5, region.lineHeight, (start.z + end.z) * 0.5);
+      mesh.rotation.y = Math.atan2(dz, dx);
+      mesh.userData.baseY = region.lineHeight;
+      hexagonalState.regionOverlayGroup.add(mesh);
+      meshes.push(mesh);
+      region.pulseMaterials.push(material);
+    }
+
+    function addJoint(point) {
+      const key = pointKey(point.x, point.z);
+      if (jointKeys.has(key)) return;
+      jointKeys.add(key);
+      const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.88, depthWrite: false });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(lineThickness, 0.014, lineThickness), material);
+      mesh.position.set(point.x, region.lineHeight, point.z);
+      mesh.userData.baseY = region.lineHeight;
+      hexagonalState.regionOverlayGroup.add(mesh);
+      meshes.push(mesh);
+      region.pulseMaterials.push(material);
+    }
+
+    memberIndexes.forEach((index) => {
+      const { mesh } = hexagonalState.cells[index];
+      const corners = Array.from({ length: 6 }, (_, cornerIndex) => ({
+        x: mesh.position.x + Math.cos(cornerOffset + cornerIndex * (Math.PI / 3)) * radius,
+        z: mesh.position.z + Math.sin(cornerOffset + cornerIndex * (Math.PI / 3)) * radius
+      }));
+
+      corners.forEach((start, cornerIndex) => {
+        const end = corners[(cornerIndex + 1) % corners.length];
+        const key = edgeKey(start, end);
+        if (edgeMap.has(key)) edgeMap.delete(key);
+        else edgeMap.set(key, { start, end });
+      });
+    });
+
+    edgeMap.forEach(({ start, end }) => {
+      addSolidSegment(start, end);
+      addJoint(start);
+      addJoint(end);
+    });
+
+    return meshes;
+  }
+
+  function getHexDistance(a, b) {
+    const dq = a.q - b.q;
+    const dr = a.r - b.r;
+    return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) * 0.5;
+  }
+
+  function updateHexagonalRegions() {
+    if (!hexagonalState?.regions?.length) return;
+
+    hexagonalState.regions.forEach((region) => {
+      const memberIndexes = getHexagonalRegionMembers(region);
+      clearHexagonalRegionLines(region);
+
+      const regionMinCells = memberIndexes.includes(hexagonalState.seedIndex) ? 1 : region.minCells;
+      if (memberIndexes.length < regionMinCells) {
+        hideOverlayLabel(region.label);
+        return;
+      }
+
+      region.lines = buildHexagonalRegionOutlineMeshes(region, memberIndexes);
+      if (!region.lines.length) {
+        hideOverlayLabel(region.label);
+        return;
+      }
+
+      styleRegionLabel(region);
+      region.label.classList.remove('hidden');
+    });
+  }
+
+  function updateHexagonalRegionPulse(time) {
+    if (!hexagonalState?.regions?.length) return;
+    hexagonalState.regions.forEach((region, index) => {
+      const wave = Math.sin(time * 1.92 + index * 1.05);
+      const pulse = 0.5 + wave * 0.5;
+      const lift = wave * 0.05;
+
+      region.pulseMaterials.forEach((material) => {
+        material.opacity = 0.12 + pulse * 0.88;
+      });
+
+      region.lines.forEach((mesh) => {
+        if (mesh?.userData?.baseY !== undefined) {
+          mesh.position.y = mesh.userData.baseY + lift;
+        }
+      });
+    });
+  }
+
+  function updateHexagonalCameraOrbit(time) {
+    if (!hexagonalState || configActiveCamera !== configPerspectiveCamera) return;
+    const angle = time * hexagonalState.orbitSpeed;
+    configPerspectiveCamera.position.set(
+      Math.cos(angle) * hexagonalState.orbitRadius,
+      hexagonalState.orbitHeight,
+      Math.sin(angle) * hexagonalState.orbitRadius * 0.82
+    );
+    configPerspectiveCamera.lookAt(0, 0, 0);
+  }
+
+  function startHexagonalGrowth() {
+    if (!hexagonalState) {
+      prepareHexagonalConfiguration(true);
+      return;
+    }
+
+    resetHexagonalCells();
+    hexagonalState.regions.forEach((region) => {
+      clearHexagonalRegionLines(region);
+      hideOverlayLabel(region.label);
+    });
+
+    const seedCandidates = hexagonalState.cells
+      .map((cell, index) => ({ cell, index }))
+      .filter(({ cell }) => Math.abs(cell.q) <= 1 && Math.abs(cell.r) <= 1);
+    const seedPick = seedCandidates[randomInt(0, seedCandidates.length - 1)] || { index: Math.floor(hexagonalState.cells.length / 2), cell: hexagonalState.cells[Math.floor(hexagonalState.cells.length / 2)] };
+    const seedIndex = seedPick.index;
+    const seedCell = hexagonalState.cells[seedIndex];
+
+    hexagonalState.running = true;
+    hexagonalState.phase = 'seed';
+    hexagonalState.alive = new Set([seedIndex]);
+    hexagonalState.latest = new Set([seedIndex]);
+    hexagonalState.seedIndex = seedIndex;
+    hexagonalState.shardLabelIndex = null;
+    hexagonalState.regions = createHexagonalRegions();
+    hexagonalState.startedAt = performance.now() * 0.001;
+    hexagonalState.lastGrowthAt = hexagonalState.startedAt;
+    hexagonalState.growthStep = 0;
+
+    setHexagonalCellState(seedIndex, 'stem-bright');
+    styleOverlayTag(configCellLabel, 0xff6600);
+    styleOverlayTag(configShardLabel, 0xffa347);
+    showOverlayLabel(configCellLabel, 'STEM CELL', seedCell.mesh.position);
+    hideOverlayLabel(configShardLabel);
+    updateHexagonalRegions();
+    configStageCaption.textContent = 'HEXAGONAL SURFACE // STEM CELL INITIALIZING';
+    renderConfigScene();
+  }
+
+  function updateHexagonalShardLabel() {
+    if (!hexagonalState || hexagonalState.alive.size < 4) return;
+
+    const seedCell = hexagonalState.cells[hexagonalState.seedIndex];
+    let bestIndex = null;
+    let bestDistance = -1;
+
+    hexagonalState.alive.forEach((index) => {
+      if (index === hexagonalState.seedIndex) return;
+      const candidate = hexagonalState.cells[index];
+      const distance = getHexDistance(candidate, seedCell);
+      if (distance > bestDistance) {
+        bestDistance = distance;
+        bestIndex = index;
+      }
+    });
+
+    if (bestIndex !== null && bestDistance >= 3) {
+      hexagonalState.shardLabelIndex = bestIndex;
+      showOverlayLabel(configShardLabel, 'SHARD CELLS', hexagonalState.cells[bestIndex].mesh.position);
+    }
+  }
+
+  function scoreHexagonalGrowthCandidate(index) {
+    const seedCell = hexagonalState.cells[hexagonalState.seedIndex];
+    const candidate = hexagonalState.cells[index];
+    const neighbors = countAliveHexagonalNeighbors(index);
+    const spread = getHexDistance(candidate, seedCell);
+    const noise = Math.sin((candidate.row + 1.4) * 1.09 + hexagonalState.growthStep * 0.76)
+      + Math.cos((candidate.col + 0.8) * 1.21 - hexagonalState.growthStep * 0.53);
+    return neighbors * 2.35 - spread * 0.16 + noise * 0.34;
+  }
+
+  function advanceHexagonalGrowth() {
+    if (!hexagonalState) return;
+
+    const candidateSet = new Set();
+    hexagonalState.alive.forEach((index) => {
+      getHexagonalNeighbors(index).forEach((neighbor) => {
+        if (!hexagonalState.alive.has(neighbor)) candidateSet.add(neighbor);
+      });
+    });
+
+    const candidates = shuffled([...candidateSet]).sort((a, b) => scoreHexagonalGrowthCandidate(b) - scoreHexagonalGrowthCandidate(a));
+    const nextFrontier = new Set();
+    const targetCount = Math.min(2 + Math.floor(hexagonalState.growthStep / 5), 4);
+    const baseChance = Math.max(0.84 - hexagonalState.growthStep * 0.03, 0.42);
+
+    for (const candidate of candidates) {
+      const score = scoreHexagonalGrowthCandidate(candidate);
+      if (score >= 2.65 || Math.random() < baseChance + Math.max(0, score - 2.0) * 0.06 || nextFrontier.size < 2) {
+        nextFrontier.add(candidate);
+      }
+      if (nextFrontier.size >= targetCount) break;
+    }
+
+    if (nextFrontier.size === 0 && candidates.length) {
+      nextFrontier.add(candidates[0]);
+    }
+
+    hexagonalState.latest.forEach((index) => {
+      if (index !== hexagonalState.seedIndex) setHexagonalCellState(index, 'core');
+    });
+
+    nextFrontier.forEach((index) => {
+      hexagonalState.alive.add(index);
+      setHexagonalCellState(index, 'frontier');
+    });
+
+    hexagonalState.latest = nextFrontier;
+    hexagonalState.growthStep += 1;
+    updateHexagonalShardLabel();
+    updateHexagonalRegions();
+    configStageCaption.textContent = `HEXAGONAL SURFACE // GROWTH WAVE ${String(hexagonalState.growthStep).padStart(2, '0')}`;
+
+    if (hexagonalState.alive.size >= hexagonalState.maxAlive || hexagonalState.growthStep >= 15) {
+      hexagonalState.alive.forEach((index) => {
+        if (index !== hexagonalState.seedIndex) setHexagonalCellState(index, 'core');
+      });
+      hexagonalState.running = false;
+      hexagonalState.phase = 'stable';
+      configStageCaption.textContent = '';
+    }
+  }
+
+  function updateHexagonalAnimation(time) {
+    if (!hexagonalState || hexagonalState.seedIndex === null) return;
+
+    const seedIndex = hexagonalState.seedIndex;
+    const elapsed = time - hexagonalState.startedAt;
+
+    if (hexagonalState.phase === 'seed') {
+      const blinkOn = Math.floor(elapsed * 5.4) % 2 === 0;
+      setHexagonalCellState(seedIndex, blinkOn ? 'stem-bright' : 'stem-dim');
+      if (elapsed >= 1.3) {
+        hexagonalState.phase = 'grow';
+        setHexagonalCellState(seedIndex, 'stem-bright');
+        hexagonalState.lastGrowthAt = time;
+        configStageCaption.textContent = 'HEXAGONAL SURFACE // FIRST DIVISION';
+      }
+    } else {
+      const seedCell = hexagonalState.cells[seedIndex];
+      if (seedCell) {
+        seedCell.material.opacity = 0.86 + ((Math.sin(time * 4.8) + 1) * 0.06);
+      }
+      if (hexagonalState.running && time - hexagonalState.lastGrowthAt >= 0.24) {
+        hexagonalState.lastGrowthAt = time;
+        advanceHexagonalGrowth();
+      }
+    }
+
+    updateHexagonalCameraOrbit(time);
+    updateHexagonalRegionPulse(time);
+    updatePulsingOverlayLabel(configCellLabel, time, { phase: 0, speed: 1.8, scaleAmplitude: 0.035, opacityBase: 0.86, opacityAmplitude: 0.12, glow: 20 });
+    updatePulsingOverlayLabel(configShardLabel, time, { phase: 1.2, speed: 1.5, scaleAmplitude: 0.025, opacityBase: 0.82, opacityAmplitude: 0.12, glow: 16 });
+    updatePulsingOverlayLabel(configHoverLabel, time, { phase: 0.5, speed: 1.9, scaleAmplitude: 0.018, opacityBase: 0.86, opacityAmplitude: 0.08, glow: 14 });
+
+    updateOverlayLabelPosition(configCellLabel);
+    updateOverlayLabelPosition(configShardLabel);
+    updateOverlayLabelPosition(configHoverLabel);
+  }
+
   function animateConfigScene() {
     requestAnimationFrame(animateConfigScene);
 
@@ -1692,6 +2262,7 @@ tailwind.config = {
 
     const time = performance.now() * 0.001;
     if (configSelectedMode === '2d-orthogonal') updateOrthogonalAnimation(time);
+    if (configSelectedMode === '2d-hexagonal') updateHexagonalAnimation(time);
 
     if (!document.getElementById('config-overlay').classList.contains('hidden')) {
       renderConfigScene();
