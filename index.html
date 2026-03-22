@@ -1077,14 +1077,14 @@ tailwind.config = {
       return;
     }
     if (state === 'core') {
-      cell.baseOpacity = 0.42;
-      cell.material.color.setHex(0xb34d18);
+      cell.baseOpacity = 0.68;
+      cell.material.color.setHex(0xd97a32);
       cell.material.opacity = cell.baseOpacity;
       return;
     }
     if (state === 'frontier') {
-      cell.baseOpacity = 0.62;
-      cell.material.color.setHex(0xb34d18);
+      cell.baseOpacity = 0.78;
+      cell.material.color.setHex(0xf0a45a);
       cell.material.opacity = cell.baseOpacity;
     }
   }
@@ -1208,11 +1208,11 @@ tailwind.config = {
     const dc = cell.col - seedCell.col;
     const lateral = dc + Math.sin((cell.row + 1) * 0.81 + (cell.col + 1) * 0.63) * 0.12;
     const vertical = Math.abs(dr);
-    const centralBias = Math.abs(lateral) + vertical * 0.6;
+    const centralBias = Math.abs(lateral) + vertical * 0.5;
 
-    if (centralBias <= 1.55) return [1];
-    if (dr === 0 && lateral >= -1.7 && lateral <= -1.15) return [0, 1];
-    if (dr === 0 && lateral >= 1.15 && lateral <= 1.7) return [1, 2];
+    if (centralBias <= 2.05) return [1];
+    if (dr === 0 && lateral >= -2.25 && lateral <= -1.75) return [0, 1];
+    if (dr === 0 && lateral >= 1.75 && lateral <= 2.25) return [1, 2];
     if (lateral < 0) return [0];
     return [2];
   }
@@ -1469,6 +1469,9 @@ tailwind.config = {
     configStageCaption.textContent = `2D TOP VIEW // GROWTH WAVE ${String(reticularState.growthStep).padStart(2, '0')}`;
 
     if (reticularState.alive.size >= reticularState.maxAlive || reticularState.growthStep >= 15) {
+      reticularState.alive.forEach((index) => {
+        if (index !== reticularState.seedIndex) setReticularCellState(index, 'core');
+      });
       reticularState.running = false;
       reticularState.phase = 'stable';
       configStageCaption.textContent = '2D TOP VIEW // COLONY STABILIZED';
