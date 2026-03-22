@@ -1439,17 +1439,6 @@ tailwind.config = {
           mesh.position.y = mesh.userData.baseY + lift;
         }
       });
-
-      updatePulsingOverlayLabel(region.label, time, {
-        phase: index * 1.05,
-        speed: 1.92,
-        transformBase: '',
-        transformOrigin: 'top right',
-        scaleAmplitude: 0.04,
-        opacityBase: 0.72,
-        opacityAmplitude: 0.22,
-        glow: 20
-      });
     });
   }
 
@@ -1495,11 +1484,16 @@ tailwind.config = {
 
   function styleRegionLabel(region) {
     if (!region?.label) return;
+    const cssColor = `#${region.color.toString(16).padStart(6, '0')}`;
     styleOverlayTag(region.label, region.color);
+    region.label.style.transform = 'none';
+    region.label.style.transformOrigin = 'top right';
+    region.label.style.opacity = '1';
+    region.label.style.boxShadow = `0 0 12px ${cssColor}22`;
     const swatch = region.label.querySelector('[data-region-swatch]');
     if (swatch) {
-      swatch.style.backgroundColor = `#${region.color.toString(16).padStart(6, '0')}`;
-      swatch.style.boxShadow = `0 0 10px #${region.color.toString(16).padStart(6, '0')}55`;
+      swatch.style.backgroundColor = cssColor;
+      swatch.style.boxShadow = `0 0 10px ${cssColor}55`;
     }
   }
 
