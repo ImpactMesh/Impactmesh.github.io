@@ -713,10 +713,10 @@ tailwind.config = {
             <div class="text-[10px] text-tertiary tracking-[0.35em] font-bold yellow-bloom">CONFIGURATION SET</div>
             <div class="text-primary/55 text-[10px] tracking-[0.24em] font-mono mt-2">SELECT A SPATIAL STRUCTURE</div>
             <div class="mt-5 space-y-3">
-              <button id="config-btn-2d-reticular" type="button" class="w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom" onclick="selectConfigMode('2d-reticular')">2D RETICULAR GRID</button>
+              <button id="config-btn-2d-reticular" type="button" class="w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom" onclick="selectConfigMode('2d-reticular')">2D ORTHOGONAL GRID</button>
               <button id="config-btn-2d-hexagonal" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('2d-hexagonal')">2D HEXAGONAL GRID</button>
               <button id="config-btn-2d-areas" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('2d-areas')">2D AREAS</button>
-              <button id="config-btn-3d-reticular" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-reticular')">3D RETICULAR</button>
+              <button id="config-btn-3d-reticular" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-reticular')">3D ORTHOGONAL GRID</button>
               <button id="config-btn-3d-hexagonal-stacked" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-stacked')">3D HEXAGONAL STACKED</button>
               <button id="config-btn-3d-hexagonal-offset" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-offset')">3D HEXAGONAL OFFSET</button>
             </div>
@@ -727,9 +727,9 @@ tailwind.config = {
               <div id="config-cell-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-primary/40 bg-black/70 px-3 py-2 text-[10px] text-primary tracking-[0.28em] font-bold electric-bloom">STEM CELL</div>
               <div id="config-shard-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-tertiary/40 bg-black/70 px-3 py-2 text-[10px] text-tertiary tracking-[0.28em] font-bold yellow-bloom">SHARD CELL</div>
               <div id="config-region-legend" class="absolute top-4 right-4 flex flex-col gap-2">
-                <div id="config-region-label-1" class="hidden flex items-center gap-3 border bg-black/70 px-3 py-2 text-[10px] tracking-[0.22em] font-bold uppercase"><span data-region-swatch class="block h-[2px] w-8 bg-current"></span><span>SEQUENCER REGION 1</span></div>
-                <div id="config-region-label-2" class="hidden flex items-center gap-3 border bg-black/70 px-3 py-2 text-[10px] tracking-[0.22em] font-bold uppercase"><span data-region-swatch class="block h-[2px] w-8 bg-current"></span><span>SEQUENCER REGION 2</span></div>
-                <div id="config-region-label-3" class="hidden flex items-center gap-3 border bg-black/70 px-3 py-2 text-[10px] tracking-[0.22em] font-bold uppercase"><span data-region-swatch class="block h-[2px] w-8 bg-current"></span><span>SEQUENCER REGION 3</span></div>
+                <div id="config-region-label-1" class="hidden flex items-center gap-3 border bg-black/70 px-3 py-2 text-[10px] tracking-[0.22em] font-bold uppercase"><span data-region-swatch class="block h-[2px] w-8 bg-current"></span><span>SERVER REGION 1</span></div>
+                <div id="config-region-label-2" class="hidden flex items-center gap-3 border bg-black/70 px-3 py-2 text-[10px] tracking-[0.22em] font-bold uppercase"><span data-region-swatch class="block h-[2px] w-8 bg-current"></span><span>SERVER REGION 2</span></div>
+                <div id="config-region-label-3" class="hidden flex items-center gap-3 border bg-black/70 px-3 py-2 text-[10px] tracking-[0.22em] font-bold uppercase"><span data-region-swatch class="block h-[2px] w-8 bg-current"></span><span>SERVER REGION 3</span></div>
               </div>
             </div>
           </div>
@@ -1035,7 +1035,7 @@ tailwind.config = {
       maxAlive: 46
     };
 
-    configStageCaption.textContent = '2D TOP VIEW // CLICK RETICULAR GRID TO INITIATE';
+    configStageCaption.textContent = '2D TOP VIEW // CLICK ORTHOGONAL GRID TO INITIATE';
     renderConfigScene();
 
     if (autoStart) startReticularGrowth();
@@ -1163,7 +1163,7 @@ tailwind.config = {
       {
         index: 0,
         label: configRegionLabels[0],
-        text: 'SEQUENCER REGION 1',
+        text: 'SERVER REGION 1'
         color: 0xbf1629,
         minCells: 2,
         labelOffsetX: -1.55,
@@ -1175,7 +1175,7 @@ tailwind.config = {
       {
         index: 1,
         label: configRegionLabels[1],
-        text: 'SEQUENCER REGION 2',
+        text: 'SERVER REGION 2'
         color: 0xf0b11d,
         minCells: 2,
         labelOffsetX: 0,
@@ -1187,7 +1187,7 @@ tailwind.config = {
       {
         index: 2,
         label: configRegionLabels[2],
-        text: 'SEQUENCER REGION 3',
+        text: 'SERVER REGION 3'
         color: 0x59d84a,
         minCells: 2,
         labelOffsetX: 1.55,
