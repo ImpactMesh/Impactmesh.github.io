@@ -726,9 +726,11 @@ tailwind.config = {
               <div id="config-stage-caption" class="absolute bottom-4 left-4 text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">2D TOP VIEW // STANDBY</div>
               <div id="config-cell-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-primary/40 bg-black/70 px-3 py-2 text-[10px] text-primary tracking-[0.28em] font-bold electric-bloom">STEM CELL</div>
               <div id="config-shard-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-tertiary/40 bg-black/70 px-3 py-2 text-[10px] text-tertiary tracking-[0.28em] font-bold yellow-bloom">SHARD CELL</div>
-              <div id="config-region-label-1" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-primary/40 bg-black/70 px-3 py-2 text-[10px] text-primary tracking-[0.22em] font-bold electric-bloom">SEQUENCER REGION 1</div>
-              <div id="config-region-label-2" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-tertiary/40 bg-black/70 px-3 py-2 text-[10px] text-tertiary tracking-[0.22em] font-bold yellow-bloom">SEQUENCER REGION 2</div>
-              <div id="config-region-label-3" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-secondary/40 bg-black/70 px-3 py-2 text-[10px] text-secondary tracking-[0.22em] font-bold">SEQUENCER REGION 3</div>
+              <div id="config-region-legend" class="absolute top-4 right-4 flex flex-col gap-2">
+                <div id="config-region-label-1" class="hidden flex items-center gap-3 border bg-black/70 px-3 py-2 text-[10px] tracking-[0.22em] font-bold uppercase"><span data-region-swatch class="block h-[2px] w-8 bg-current"></span><span>SEQUENCER REGION 1</span></div>
+                <div id="config-region-label-2" class="hidden flex items-center gap-3 border bg-black/70 px-3 py-2 text-[10px] tracking-[0.22em] font-bold uppercase"><span data-region-swatch class="block h-[2px] w-8 bg-current"></span><span>SEQUENCER REGION 2</span></div>
+                <div id="config-region-label-3" class="hidden flex items-center gap-3 border bg-black/70 px-3 py-2 text-[10px] tracking-[0.22em] font-bold uppercase"><span data-region-swatch class="block h-[2px] w-8 bg-current"></span><span>SEQUENCER REGION 3</span></div>
+              </div>
             </div>
           </div>
         </div>
@@ -898,7 +900,6 @@ tailwind.config = {
 
     updateOverlayLabelPosition(configCellLabel);
     updateOverlayLabelPosition(configShardLabel);
-    configRegionLabels.forEach(updateOverlayLabelPosition);
   }
 
   function renderConfigScene() {
@@ -1045,7 +1046,7 @@ tailwind.config = {
     reticularState.cells.forEach((cell) => {
       cell.state = 'dead';
       cell.baseOpacity = 0.14;
-      cell.material.color.setHex(0x17161c);
+      cell.material.color.setHex(0x130804);
       cell.material.opacity = 0.14;
     });
   }
@@ -1059,31 +1060,31 @@ tailwind.config = {
 
     if (state === 'dead') {
       cell.baseOpacity = 0.14;
-      cell.material.color.setHex(0x17161c);
+      cell.material.color.setHex(0x130804);
       cell.material.opacity = cell.baseOpacity;
       return;
     }
     if (state === 'stem-bright') {
-      cell.baseOpacity = 0.96;
-      cell.material.color.setHex(0xf0b11d);
+      cell.baseOpacity = 0.98;
+      cell.material.color.setHex(0xff6600);
       cell.material.opacity = cell.baseOpacity;
       return;
     }
     if (state === 'stem-dim') {
-      cell.baseOpacity = 0.28;
-      cell.material.color.setHex(0x6a4c11);
+      cell.baseOpacity = 0.24;
+      cell.material.color.setHex(0x4d1b05);
       cell.material.opacity = cell.baseOpacity;
       return;
     }
     if (state === 'core') {
-      cell.baseOpacity = 0.52;
-      cell.material.color.setHex(0x8d121e);
+      cell.baseOpacity = 0.42;
+      cell.material.color.setHex(0xb34d18);
       cell.material.opacity = cell.baseOpacity;
       return;
     }
     if (state === 'frontier') {
-      cell.baseOpacity = 0.72;
-      cell.material.color.setHex(0xb5484e);
+      cell.baseOpacity = 0.62;
+      cell.material.color.setHex(0xd97a32);
       cell.material.opacity = cell.baseOpacity;
     }
   }
@@ -1205,21 +1206,13 @@ tailwind.config = {
     const seedCell = reticularState.cells[reticularState.seedIndex];
     const dr = cell.row - seedCell.row;
     const dc = cell.col - seedCell.col;
-    const noise = Math.sin((cell.row + 1) * 1.21 + (cell.col + 1) * 0.93) * 0.34
-      + Math.cos((cell.row - seedCell.row) * 0.77 - (cell.col - seedCell.col) * 1.11) * 0.22;
+    const lateral = dc + Math.sin((cell.row + 1) * 0.81 + (cell.col + 1) * 0.63) * 0.12;
 
-    const scores = [
-      -dc * 0.92 + dr * 0.18 + noise * 0.9,
-      2.7 - Math.abs(dc) * 0.95 - Math.abs(dr) * 0.52 - Math.abs(noise) * 0.25,
-      dc * 0.92 + dr * 0.18 - noise * 0.9
-    ];
-
-    const best = Math.max(...scores);
-    const membership = scores
-      .map((score, regionIndex) => (score >= best - 1.08 ? regionIndex : -1))
-      .filter((regionIndex) => regionIndex !== -1);
-
-    return membership.length ? membership : [scores.indexOf(best)];
+    if (dr === 0 && lateral >= -1.15 && lateral <= -0.45) return [0, 1];
+    if (dr === 0 && lateral >= 0.45 && lateral <= 1.15) return [1, 2];
+    if (lateral < -0.45) return [0];
+    if (lateral > 0.45) return [2];
+    return [1];
   }
 
   function getReticularRegionMembers(region) {
@@ -1246,8 +1239,8 @@ tailwind.config = {
     const half = reticularState.spacing * 0.5;
     const edgeMap = new Map();
     const meshes = [];
-    const coreThickness = reticularState.spacing * 0.12;
-    const glowThickness = reticularState.spacing * 0.24;
+    const jointKeys = new Set();
+    const lineThickness = reticularState.spacing * 0.072;
 
     function pointKey(x, z) {
       return `${x.toFixed(4)},${z.toFixed(4)}`;
@@ -1257,6 +1250,14 @@ tailwind.config = {
       return pointKey(a.x, a.z) < pointKey(b.x, b.z)
         ? `${pointKey(a.x, a.z)}|${pointKey(b.x, b.z)}`
         : `${pointKey(b.x, b.z)}|${pointKey(a.x, a.z)}`;
+    }
+
+    function addSolidMesh(width, height, depth, x, y, z) {
+      const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: false, opacity: 1 });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+      mesh.position.set(x, y, z);
+      reticularState.regionOverlayGroup.add(mesh);
+      meshes.push(mesh);
     }
 
     memberIndexes.forEach((index) => {
@@ -1283,45 +1284,28 @@ tailwind.config = {
       const dx = Math.abs(end.x - start.x);
       const dz = Math.abs(end.z - start.z);
       const horizontal = dx >= dz;
-      const length = horizontal ? dx : dz;
+      const length = (horizontal ? dx : dz) + lineThickness;
       const midX = (start.x + end.x) * 0.5;
       const midZ = (start.z + end.z) * 0.5;
 
-      const glowMaterial = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.18, depthWrite: false });
-      const coreMaterial = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.84 });
-
-      const glowMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(horizontal ? length : glowThickness, 0.01, horizontal ? glowThickness : length),
-        glowMaterial
+      addSolidMesh(
+        horizontal ? length : lineThickness,
+        0.014,
+        horizontal ? lineThickness : length,
+        midX,
+        0.05,
+        midZ
       );
-      glowMesh.position.set(midX, 0.03, midZ);
-      reticularState.regionOverlayGroup.add(glowMesh);
-      meshes.push(glowMesh);
-      region.pulseMaterials.push({ material: glowMaterial, baseOpacity: 0.18, amplitude: 0.12 });
 
-      const coreMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(horizontal ? length : coreThickness, 0.018, horizontal ? coreThickness : length),
-        coreMaterial
-      );
-      coreMesh.position.set(midX, 0.05, midZ);
-      reticularState.regionOverlayGroup.add(coreMesh);
-      meshes.push(coreMesh);
-      region.pulseMaterials.push({ material: coreMaterial, baseOpacity: 0.84, amplitude: 0.16 });
+      [start, end].forEach((point) => {
+        const key = pointKey(point.x, point.z);
+        if (jointKeys.has(key)) return;
+        jointKeys.add(key);
+        addSolidMesh(lineThickness, 0.014, lineThickness, point.x, 0.05, point.z);
+      });
     });
 
     return meshes;
-  }
-
-  function getReticularRegionLabelPosition(region, memberIndexes) {
-    const memberCells = memberIndexes.map((index) => reticularState.cells[index]);
-    const minX = Math.min(...memberCells.map((cell) => cell.mesh.position.x));
-    const maxX = Math.max(...memberCells.map((cell) => cell.mesh.position.x));
-    const minZ = Math.min(...memberCells.map((cell) => cell.mesh.position.z));
-    return new THREE.Vector3(
-      (minX + maxX) * 0.5 + region.labelOffsetX * reticularState.spacing,
-      0.06,
-      minZ + region.labelOffsetZ * reticularState.spacing
-    );
   }
 
   function styleOverlayTag(element, color) {
@@ -1335,31 +1319,11 @@ tailwind.config = {
   function styleRegionLabel(region) {
     if (!region?.label) return;
     styleOverlayTag(region.label, region.color);
-  }
-
-  function updateReticularRegionPulse(time) {
-    if (!reticularState?.regions?.length) return;
-    reticularState.regions.forEach((region) => {
-      const pulse = 0.68 + Math.sin(time * 2.9 + region.pulsePhase) * 0.32;
-      region.pulseMaterials.forEach(({ material, baseOpacity, amplitude }) => {
-        material.opacity = Math.max(0.08, baseOpacity + pulse * amplitude);
-      });
-    });
-  }
-
-  function updateReticularCellLife(time) {
-    if (!reticularState) return;
-    reticularState.alive.forEach((index) => {
-      const cell = reticularState.cells[index];
-      if (!cell) return;
-      const phase = time * (cell.state === 'frontier' ? 5.3 : 2.4) + cell.pulseOffset;
-      const amplitude = cell.state === 'stem-bright'
-        ? 0.05
-        : cell.state === 'frontier'
-          ? 0.12
-          : 0.07;
-      cell.material.opacity = Math.max(0.24, cell.baseOpacity + Math.sin(phase) * amplitude);
-    });
+    const swatch = region.label.querySelector('[data-region-swatch]');
+    if (swatch) {
+      swatch.style.backgroundColor = `#${region.color.toString(16).padStart(6, '0')}`;
+      swatch.style.boxShadow = `0 0 10px #${region.color.toString(16).padStart(6, '0')}55`;
+    }
   }
 
   function updateReticularRegions() {
@@ -1381,7 +1345,7 @@ tailwind.config = {
       }
 
       styleRegionLabel(region);
-      showOverlayLabel(region.label, region.text, getReticularRegionLabelPosition(region, memberIndexes));
+      region.label.classList.remove('hidden');
     });
   }
 
@@ -1416,8 +1380,8 @@ tailwind.config = {
     reticularState.growthStep = 0;
 
     setReticularCellState(seedIndex, 'stem-bright');
-    styleOverlayTag(configCellLabel, 0xf0b11d);
-    styleOverlayTag(configShardLabel, 0x59d84a);
+    styleOverlayTag(configCellLabel, 0xff6600);
+    styleOverlayTag(configShardLabel, 0xffa347);
     showOverlayLabel(configCellLabel, 'STEM CELL', seedCell.mesh.position);
     hideOverlayLabel(configShardLabel);
     updateReticularRegions();
@@ -1529,12 +1493,8 @@ tailwind.config = {
       advanceReticularGrowth();
     }
 
-    updateReticularCellLife(time);
-    updateReticularRegionPulse(time);
-
     updateOverlayLabelPosition(configCellLabel);
     updateOverlayLabelPosition(configShardLabel);
-    configRegionLabels.forEach(updateOverlayLabelPosition);
   }
 
   function animateConfigScene() {
