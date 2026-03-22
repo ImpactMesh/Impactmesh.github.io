@@ -1429,18 +1429,14 @@ tailwind.config = {
 
     const cellIndex = hit.object.userData.cellIndex;
     const cell = orthogonalState.cells[cellIndex];
-    if (!cell) {
+    if (!cell || !orthogonalState.alive.has(cellIndex)) {
       clearConfigHover();
       return;
     }
 
     configHoveredCellIndex = cellIndex;
     styleOverlayTag(configHoverLabel, 0xffa347);
-    const labelPrefix = cellIndex === orthogonalState.seedIndex
-      ? 'STEM'
-      : orthogonalState.alive.has(cellIndex)
-        ? 'SHARD'
-        : 'CELL';
+    const labelPrefix = cellIndex === orthogonalState.seedIndex ? 'STEM' : 'SHARD';
     showOverlayLabel(configHoverLabel, `${labelPrefix} ID: ${cell.cellId}`, cell.mesh.position);
   }
 
