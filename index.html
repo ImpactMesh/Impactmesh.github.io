@@ -1706,13 +1706,13 @@ tailwind.config = {
     configSelectedMode = '2d-hexagonal';
     configActiveCamera = configPerspectiveCamera;
 
-    const rows = 9;
-    const cols = 9;
-    const hexRadius = 0.58;
-    const cellRadius = hexRadius * 0.9;
+    const rows = 11;
+    const cols = 11;
+    const hexRadius = 0.52;
+    const cellRadius = hexRadius;
     const hexHeight = 0.02;
-    const xStep = Math.sqrt(3) * hexRadius;
-    const zStep = 1.5 * hexRadius;
+    const xStep = 1.5 * hexRadius;
+    const zStep = Math.sqrt(3) * hexRadius;
     const centerRow = Math.floor(rows / 2);
     const centerCol = Math.floor(cols / 2);
     const layout = [];
@@ -1725,8 +1725,8 @@ tailwind.config = {
       for (let col = 0; col < cols; col += 1) {
         const q = col - centerCol;
         const r = row - centerRow;
-        const x = xStep * (q + r / 2);
-        const z = zStep * r;
+        const x = xStep * q;
+        const z = zStep * (r + q * 0.5);
         layout.push({ row, col, q, r, x, z });
         minX = Math.min(minX, x);
         maxX = Math.max(maxX, x);
@@ -1735,8 +1735,8 @@ tailwind.config = {
       }
     }
 
-    const boardWidth = (maxX - minX) + hexRadius * 3.4;
-    const boardHeight = (maxZ - minZ) + hexRadius * 3.4;
+    const boardWidth = (maxX - minX) + hexRadius * 4.0;
+    const boardHeight = (maxZ - minZ) + hexRadius * 4.2;
     const group = new THREE.Group();
 
     const base = new THREE.Mesh(
@@ -1746,10 +1746,6 @@ tailwind.config = {
     base.rotation.x = -Math.PI / 2;
     base.position.y = -0.08;
     group.add(base);
-
-    const gridHelper = new THREE.GridHelper(Math.max(boardWidth, boardHeight) + 1.8, 18, 0x5a2408, 0x241108);
-    gridHelper.position.y = -0.04;
-    group.add(gridHelper);
 
     const border = new THREE.LineSegments(
       new THREE.EdgesGeometry(new THREE.BoxGeometry(boardWidth + 0.5, 0.02, boardHeight + 0.5)),
@@ -1772,13 +1768,15 @@ tailwind.config = {
         opacity: 0.14
       });
       const mesh = new THREE.Mesh(cellGeometry, material);
-      mesh.rotation.y = Math.PI / 6;
       mesh.position.set(x, 0.01, z);
       mesh.userData.cellIndex = cells.length;
       group.add(mesh);
       cells.push({ row, col, q, r, mesh, material, cellId: makeConfigCellId(row, col), state: 'dead', baseOpacity: 0.14, pulseOffset: Math.random() * Math.PI * 2 });
       cellIndexByKey.set(`${q},${r}`, cells.length - 1);
     });
+
+    const latticeGroup = new THREE.Group();
+    group.add(latticeGroup);
 
     configScene.add(group);
     configCurrentGroup = group;
@@ -1800,11 +1798,19 @@ tailwind.config = {
       startedAt: 0,
       lastGrowthAt: 0,
       growthStep: 0,
-      orbitRadius: Math.max(boardWidth, boardHeight) * 0.88,
-      orbitHeight: Math.max(boardWidth, boardHeight) * 0.64,
+      orbitRadius: Math.max(boardWidth, boardHeight) * 0.76,
+      orbitHeight: Math.max(boardWidth, boardHeight) * 0.56,
       orbitSpeed: 0.12,
-      maxAlive: 44
+      maxAlive: 48
     };
+
+    const latticeEdges = collectHexagonalEdges(cells, hexRadius, false);
+    addHexEdgeMeshes(latticeGroup, latticeEdges, {
+      color: 0x5a2408,
+      opacity: 0.34,
+      lineThickness: hexRadius * 0.045,
+      lineHeight: -0.02
+    });
 
     renderConfigScene();
 
@@ -1933,13 +1939,13 @@ tailwind.config = {
     const seedCell = hexagonalState.cells[hexagonalState.seedIndex];
     const dq = cell.q - seedCell.q;
     const dr = cell.r - seedCell.r;
-    const lateral = dq + dr * 0.5 + Math.sin((cell.row + 1) * 0.71 + (cell.col + 1) * 0.52) * 0.14;
-    const sweep = Math.abs(dr * 0.9 - dq * 0.18);
-    const centralBias = Math.abs(lateral) + sweep * 0.44;
+    const lateral = dq;
+    const centralHalfWidth = 1.2 + Math.max(0, 2.4 - Math.abs(dr)) * 0.18;
+    const overlapBand = 0.7;
 
-    if (centralBias <= 1.95) return [1];
-    if (Math.abs(dr) <= 1 && lateral >= -2.15 && lateral <= -1.45) return [0, 1];
-    if (Math.abs(dr) <= 1 && lateral >= 1.45 && lateral <= 2.15) return [1, 2];
+    if (Math.abs(lateral) <= centralHalfWidth) return [1];
+    if (lateral > centralHalfWidth && lateral <= centralHalfWidth + overlapBand) return [1, 2];
+    if (lateral < -centralHalfWidth && lateral >= -centralHalfWidth - overlapBand) return [0, 1];
     if (lateral < 0) return [0];
     return [2];
   }
@@ -1962,15 +1968,16 @@ tailwind.config = {
     }
   }
 
-  function buildHexagonalRegionOutlineMeshes(region, memberIndexes) {
-    if (!hexagonalState || !memberIndexes.length) return [];
+  function getHexagonalCellCorners(cell, radius) {
+    const cornerOffset = 0;
+    return Array.from({ length: 6 }, (_, cornerIndex) => ({
+      x: cell.mesh.position.x + Math.cos(cornerOffset + cornerIndex * (Math.PI / 3)) * radius,
+      z: cell.mesh.position.z + Math.sin(cornerOffset + cornerIndex * (Math.PI / 3)) * radius
+    }));
+  }
 
-    const radius = hexagonalState.hexRadius;
+  function collectHexagonalEdges(cells, radius, boundaryOnly) {
     const edgeMap = new Map();
-    const meshes = [];
-    const jointKeys = new Set();
-    const lineThickness = radius * 0.15;
-    const cornerOffset = Math.PI / 6;
 
     function pointKey(x, z) {
       return `${x.toFixed(4)},${z.toFixed(4)}`;
@@ -1982,54 +1989,59 @@ tailwind.config = {
         : `${pointKey(b.x, b.z)}|${pointKey(a.x, a.z)}`;
     }
 
-    function addSolidSegment(start, end) {
-      const dx = end.x - start.x;
-      const dz = end.z - start.z;
-      const length = Math.hypot(dx, dz) + lineThickness;
-      const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.88, depthWrite: false });
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(length, 0.014, lineThickness), material);
-      mesh.position.set((start.x + end.x) * 0.5, region.lineHeight, (start.z + end.z) * 0.5);
-      mesh.rotation.y = Math.atan2(dz, dx);
-      mesh.userData.baseY = region.lineHeight;
-      hexagonalState.regionOverlayGroup.add(mesh);
-      meshes.push(mesh);
-      region.pulseMaterials.push(material);
-    }
-
-    function addJoint(point) {
-      const key = pointKey(point.x, point.z);
-      if (jointKeys.has(key)) return;
-      jointKeys.add(key);
-      const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.88, depthWrite: false });
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(lineThickness, 0.014, lineThickness), material);
-      mesh.position.set(point.x, region.lineHeight, point.z);
-      mesh.userData.baseY = region.lineHeight;
-      hexagonalState.regionOverlayGroup.add(mesh);
-      meshes.push(mesh);
-      region.pulseMaterials.push(material);
-    }
-
-    memberIndexes.forEach((index) => {
-      const { mesh } = hexagonalState.cells[index];
-      const corners = Array.from({ length: 6 }, (_, cornerIndex) => ({
-        x: mesh.position.x + Math.cos(cornerOffset + cornerIndex * (Math.PI / 3)) * radius,
-        z: mesh.position.z + Math.sin(cornerOffset + cornerIndex * (Math.PI / 3)) * radius
-      }));
-
+    cells.forEach((cell) => {
+      const corners = getHexagonalCellCorners(cell, radius);
       corners.forEach((start, cornerIndex) => {
         const end = corners[(cornerIndex + 1) % corners.length];
         const key = edgeKey(start, end);
+        if (!boundaryOnly) {
+          if (!edgeMap.has(key)) edgeMap.set(key, { start, end });
+          return;
+        }
         if (edgeMap.has(key)) edgeMap.delete(key);
         else edgeMap.set(key, { start, end });
       });
     });
 
-    edgeMap.forEach(({ start, end }) => {
-      addSolidSegment(start, end);
-      addJoint(start);
-      addJoint(end);
+    return [...edgeMap.values()];
+  }
+
+  function addHexEdgeMeshes(targetGroup, edges, options = {}) {
+    const meshes = [];
+    const materials = [];
+    const lineThickness = options.lineThickness ?? 0.05;
+    const lineHeight = options.lineHeight ?? 0;
+    const opacity = options.opacity ?? 0.88;
+    const color = options.color ?? 0xff6600;
+
+    edges.forEach(({ start, end }) => {
+      const dx = end.x - start.x;
+      const dz = end.z - start.z;
+      const length = Math.hypot(dx, dz) + lineThickness * 0.35;
+      const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(length, 0.014, lineThickness), material);
+      mesh.position.set((start.x + end.x) * 0.5, lineHeight, (start.z + end.z) * 0.5);
+      mesh.rotation.y = Math.atan2(dz, dx);
+      mesh.userData.baseY = lineHeight;
+      targetGroup.add(mesh);
+      meshes.push(mesh);
+      materials.push(material);
     });
 
+    return { meshes, materials };
+  }
+
+  function buildHexagonalRegionOutlineMeshes(region, memberIndexes) {
+    if (!hexagonalState || !memberIndexes.length) return [];
+
+    const edges = collectHexagonalEdges(memberIndexes.map((index) => hexagonalState.cells[index]), hexagonalState.hexRadius, true);
+    const { meshes, materials } = addHexEdgeMeshes(hexagonalState.regionOverlayGroup, edges, {
+      color: region.color,
+      opacity: 0.88,
+      lineThickness: hexagonalState.hexRadius * 0.095,
+      lineHeight: region.lineHeight
+    });
+    region.pulseMaterials.push(...materials);
     return meshes;
   }
 
