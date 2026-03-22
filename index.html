@@ -807,9 +807,9 @@ tailwind.config = {
     '2d-orthogonal': 'Orthogonal grids are common in games because movement, pathfinding and placement all snap cleanly to square cells. They are easy to read at a glance, but diagonal movement needs explicit rules if you want distance to feel fair.',
     '2d-hexagonal': 'Hex grids give each unit six evenly spaced directions, so adjacency and movement stay consistent without awkward diagonal shortcuts. They are especially good for tactical games where range, spacing and maneuver need to stay precise.',
     '2d-areas': 'Area movement replaces equal cells with irregular regions connected by borders. It works well for strategic maps, because the shape and size of each area can communicate terrain, roads, chokepoints and political geography.',
-    '3d-orthogonal': 'Orthogonal grids are common in games because movement, pathfinding and placement all snap cleanly to square cells. They are easy to read at a glance, but diagonal movement needs explicit rules if you want distance to feel fair.',
-    '3d-hexagonal-stacked': 'Hex grids give each unit six evenly spaced directions, so adjacency and movement stay consistent without awkward diagonal shortcuts. They are especially good for tactical games where range, spacing and maneuver need to stay precise.',
-    '3d-hexagonal-offset': 'Hex grids give each unit six evenly spaced directions, so adjacency and movement stay consistent without awkward diagonal shortcuts. They are especially good for tactical games where range, spacing and maneuver need to stay precise.'
+    '3d-orthogonal': '3D orthogonal grids work like the 2D orthogonal model, with the same clean square-cell movement and placement rules. The difference is that each cell also connects to one cell above and one below, adding two more direct neighbors in the vertical axis.',
+    '3d-hexagonal-stacked': '3D hex stacked grids keep the same six-direction movement as a 2D hex grid, so adjacency stays consistent across the surface. Each cell also connects vertically to one cell above and one below, adding two more neighbors between layers.',
+    '3d-hexagonal-offset': '3D hex offset grids stack each layer so the center of a cell directly accesses three cells above and three below. That makes vertical transitions and 3D diagonals feel more uniform than a simple stacked layout.'
   };
 
   function getConfigExplainerText(mode) {
