@@ -2304,7 +2304,7 @@ tailwind.config = {
       startedAt: 0,
       lastGrowthAt: 0,
       growthStep: 0,
-      maxAlive: 16,
+      maxAlive: 38,
       rng: createSeededRandom(0xA3EA52)
     };
 
@@ -2488,7 +2488,7 @@ tailwind.config = {
     updateAreasRegions();
     configStageCaption.textContent = `AREA SURFACE // GROWTH WAVE ${String(areasState.growthStep).padStart(2, '0')}`;
 
-    if (areasState.alive.size >= areasState.maxAlive || areasState.growthStep >= 9) {
+    if (areasState.alive.size >= areasState.maxAlive || areasState.growthStep >= 16) {
       areasState.alive.forEach((index) => {
         if (index !== areasState.seedIndex) setAreasCellState(index, 'core');
       });
