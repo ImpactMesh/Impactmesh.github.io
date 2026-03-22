@@ -2337,7 +2337,7 @@ tailwind.config = {
       orbitRadius: Math.max(boardWidth, boardHeight) * 0.86,
       orbitHeight: Math.max(boardWidth, boardHeight) * 0.62,
       orbitSpeed: 0.12,
-      maxAlive: 24,
+      maxAlive: 36,
       rng: createSeededRandom(0xA3EA52)
     };
 
@@ -2496,8 +2496,16 @@ tailwind.config = {
       .map((index) => ({ index, score: scoreAreaGrowthCandidate(index) }))
       .sort((a, b) => b.score - a.score);
 
+    const remainingSlots = areasState.maxAlive - areasState.alive.size;
+    if (remainingSlots <= 0) {
+      areasState.running = false;
+      areasState.phase = 'stable';
+      configStageCaption.textContent = '';
+      return;
+    }
+
     const nextFrontier = new Set();
-    const quota = Math.min(2 + Math.floor(areasState.growthStep * 0.35), Math.max(2, ranked.length));
+    const quota = Math.min(remainingSlots, 2 + Math.floor(areasState.growthStep * 0.35), Math.max(2, ranked.length));
     ranked.forEach(({ index, score }, rank) => {
       const chance = 0.18 - rank * 0.02;
       if (nextFrontier.size >= quota) return;
