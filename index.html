@@ -723,7 +723,7 @@ tailwind.config = {
           </aside>
           <div id="config-three-stage" class="relative h-full min-h-[28rem] border border-primary/20 bg-[#050505] overflow-hidden">
             <div class="pointer-events-none absolute inset-0 z-10">
-              <div class="absolute top-4 left-4 max-w-[29rem] border border-primary/20 bg-black/72 px-4 py-3">
+              <div id="config-explainer-panel" class="hidden absolute top-4 left-4 max-w-[29rem] border border-primary/20 bg-black/72 px-4 py-3">
                 <div class="text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">SPATIAL MODEL</div>
                 <p id="config-explainer" class="mt-2 min-h-[4.75rem] text-[13px] leading-6 text-[#d8c4a2] tracking-[0.02em]"></p>
               </div>
@@ -789,7 +789,7 @@ tailwind.config = {
   let configHoveredCellIndex = null;
   let configAnimationStarted = false;
   let configCurrentGroup = null;
-  let configSelectedMode = '2d-orthogonal';
+  let configSelectedMode = null;
   let orthogonalState = null;
 
   const CONFIG_BUTTON_ACTIVE = 'w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom';
@@ -820,8 +820,10 @@ tailwind.config = {
     if (!configExplainer) return;
     clearTimeout(configExplainerTypingTimeout);
 
+    const panel = document.getElementById('config-explainer-panel');
     const fullText = getConfigExplainerText(mode);
     configExplainer.textContent = '';
+    if (panel) panel.classList.toggle('hidden', !fullText);
     if (!fullText) return;
 
     let index = 0;
@@ -865,6 +867,7 @@ tailwind.config = {
       overlay.classList.add('is-open');
       requestAnimationFrame(() => {
         initConfigScene();
+        resetConfigOverlayState();
         resizeConfigScene();
         renderConfigScene();
       });
@@ -917,9 +920,6 @@ tailwind.config = {
     configOrthoCamera.position.set(0, 12, 0.001);
     configOrthoCamera.up.set(0, 0, -1);
     configOrthoCamera.lookAt(0, 0, 0);
-
-    setConfigButtonState('2d-orthogonal');
-    prepareOrthogonalConfiguration(false);
 
     if (!configAnimationStarted) {
       configAnimationStarted = true;
@@ -978,6 +978,17 @@ tailwind.config = {
     hideOverlayLabel(configShardLabel);
     hideOverlayLabel(configHoverLabel);
     configRegionLabels.forEach(hideOverlayLabel);
+  }
+
+  function resetConfigOverlayState() {
+    clearTimeout(configExplainerTypingTimeout);
+    clearConfigGroup();
+    configSelectedMode = null;
+    configActiveCamera = configPerspectiveCamera || configActiveCamera;
+    setConfigButtonState(null);
+    if (configStageCaption) configStageCaption.textContent = '';
+    if (configExplainer) configExplainer.textContent = '';
+    document.getElementById('config-explainer-panel')?.classList.add('hidden');
   }
 
   function setConfigButtonState(mode) {
@@ -1095,8 +1106,6 @@ tailwind.config = {
       maxAlive: 46
     };
 
-    configStageCaption.textContent = 'ORTHOGONAL SURFACE // CLICK GRID TO INITIATE';
-    startConfigExplainerTyping('2d-orthogonal');
     renderConfigScene();
 
     if (autoStart) startOrthogonalGrowth();
