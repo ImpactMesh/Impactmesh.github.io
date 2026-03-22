@@ -868,8 +868,8 @@ tailwind.config = {
     configScene = new THREE.Scene();
     configScene.background = new THREE.Color(0x070707);
 
-    configPerspectiveCamera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-    configPerspectiveCamera.position.set(2.8, 2.2, 4.8);
+    configPerspectiveCamera = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
+    configPerspectiveCamera.position.set(7.8, 8.2, 7.6);
     configPerspectiveCamera.lookAt(0, 0, 0);
 
     configOrthoCamera = new THREE.OrthographicCamera(-7, 7, 7, -7, 0.1, 40);
@@ -971,7 +971,7 @@ tailwind.config = {
     clearConfigGroup();
 
     configSelectedMode = '2d-orthogonal';
-    configActiveCamera = configOrthoCamera;
+    configActiveCamera = configPerspectiveCamera;
 
     const rows = 14;
     const cols = 14;
@@ -1047,10 +1047,13 @@ tailwind.config = {
       startedAt: 0,
       lastGrowthAt: 0,
       growthStep: 0,
+      orbitRadius: Math.max(boardWidth, boardHeight) * 0.86,
+      orbitHeight: Math.max(boardWidth, boardHeight) * 0.62,
+      orbitSpeed: 0.12,
       maxAlive: 46
     };
 
-    configStageCaption.textContent = '2D TOP VIEW // CLICK ORTHOGONAL GRID TO INITIATE';
+    configStageCaption.textContent = 'ORTHOGONAL SURFACE // CLICK GRID TO INITIATE';
     renderConfigScene();
 
     if (autoStart) startOrthogonalGrowth();
@@ -1275,11 +1278,12 @@ tailwind.config = {
     }
 
     function addSolidMesh(width, height, depth, x, y, z) {
-      const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: false, opacity: 1 });
+      const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.86, depthWrite: false });
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
       mesh.position.set(x, y, z);
       orthogonalState.regionOverlayGroup.add(mesh);
       meshes.push(mesh);
+      region.pulseMaterials.push(material);
     }
 
     memberIndexes.forEach((index) => {
@@ -1352,11 +1356,42 @@ tailwind.config = {
     const opacityAmplitude = options.opacityAmplitude || 0.1;
     const glow = options.glow || 18;
     const cssColor = element.style.color || '#ff6600';
-    const pulse = 0.5 + Math.sin(time * 3.2 + phase) * 0.5;
+    const pulse = 0.5 + Math.sin(time * (options.speed || 3.2) + phase) * 0.5;
     const scale = scaleBase + pulse * scaleAmplitude;
-    element.style.transform = `translate(-50%, -115%) scale(${scale.toFixed(3)})`;
+    const transformBase = options.transformBase || 'translate(-50%, -115%)';
+    element.style.transform = `${transformBase} scale(${scale.toFixed(3)})`;
     element.style.opacity = String(Math.max(0.6, opacityBase + pulse * opacityAmplitude));
     element.style.boxShadow = `0 0 ${Math.round(glow + pulse * 10)}px ${cssColor}44`;
+  }
+
+  function updateOrthogonalRegionPulse(time) {
+    if (!orthogonalState?.regions?.length) return;
+    orthogonalState.regions.forEach((region, index) => {
+      const pulse = 0.5 + Math.sin(time * 1.2 + index * 0.9) * 0.5;
+      region.pulseMaterials.forEach((material) => {
+        material.opacity = 0.76 + pulse * 0.16;
+      });
+      updatePulsingOverlayLabel(region.label, time, {
+        phase: index * 0.9,
+        speed: 1.2,
+        transformBase: '',
+        scaleAmplitude: 0.02,
+        opacityBase: 0.82,
+        opacityAmplitude: 0.1,
+        glow: 14
+      });
+    });
+  }
+
+  function updateOrthogonalCameraOrbit(time) {
+    if (!orthogonalState || configActiveCamera !== configPerspectiveCamera) return;
+    const angle = time * orthogonalState.orbitSpeed;
+    configPerspectiveCamera.position.set(
+      Math.cos(angle) * orthogonalState.orbitRadius,
+      orthogonalState.orbitHeight,
+      Math.sin(angle) * orthogonalState.orbitRadius * 0.82
+    );
+    configPerspectiveCamera.lookAt(0, 0, 0);
   }
 
   function handleConfigPointerMove(event) {
@@ -1540,7 +1575,7 @@ tailwind.config = {
     orthogonalState.growthStep += 1;
     updateShardCellLabel();
     updateOrthogonalRegions();
-    configStageCaption.textContent = `2D TOP VIEW // GROWTH WAVE ${String(orthogonalState.growthStep).padStart(2, '0')}`;
+    configStageCaption.textContent = `ORTHOGONAL SURFACE // GROWTH WAVE ${String(orthogonalState.growthStep).padStart(2, '0')}`;
 
     if (orthogonalState.alive.size >= orthogonalState.maxAlive || orthogonalState.growthStep >= 15) {
       orthogonalState.alive.forEach((index) => {
@@ -1548,7 +1583,7 @@ tailwind.config = {
       });
       orthogonalState.running = false;
       orthogonalState.phase = 'stable';
-      configStageCaption.textContent = '2D TOP VIEW // COLONY STABILIZED';
+      configStageCaption.textContent = '';
     }
   }
 
@@ -1565,7 +1600,7 @@ tailwind.config = {
         orthogonalState.phase = 'grow';
         setOrthogonalCellState(seedIndex, 'stem-bright');
         orthogonalState.lastGrowthAt = time;
-        configStageCaption.textContent = '2D TOP VIEW // FIRST DIVISION';
+        configStageCaption.textContent = 'ORTHOGONAL SURFACE // FIRST DIVISION';
       }
     } else {
       const seedCell = orthogonalState.cells[seedIndex];
@@ -1578,9 +1613,11 @@ tailwind.config = {
       }
     }
 
-    updatePulsingOverlayLabel(configCellLabel, time, { phase: 0, scaleAmplitude: 0.035, opacityBase: 0.86, opacityAmplitude: 0.12, glow: 20 });
-    updatePulsingOverlayLabel(configShardLabel, time, { phase: 1.2, scaleAmplitude: 0.025, opacityBase: 0.82, opacityAmplitude: 0.12, glow: 16 });
-    updatePulsingOverlayLabel(configHoverLabel, time, { phase: 0.5, scaleAmplitude: 0.018, opacityBase: 0.86, opacityAmplitude: 0.08, glow: 14 });
+    updateOrthogonalCameraOrbit(time);
+    updateOrthogonalRegionPulse(time);
+    updatePulsingOverlayLabel(configCellLabel, time, { phase: 0, speed: 1.8, scaleAmplitude: 0.035, opacityBase: 0.86, opacityAmplitude: 0.12, glow: 20 });
+    updatePulsingOverlayLabel(configShardLabel, time, { phase: 1.2, speed: 1.5, scaleAmplitude: 0.025, opacityBase: 0.82, opacityAmplitude: 0.12, glow: 16 });
+    updatePulsingOverlayLabel(configHoverLabel, time, { phase: 0.5, speed: 1.9, scaleAmplitude: 0.018, opacityBase: 0.86, opacityAmplitude: 0.08, glow: 14 });
 
     updateOverlayLabelPosition(configCellLabel);
     updateOverlayLabelPosition(configShardLabel);
