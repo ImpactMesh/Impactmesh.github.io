@@ -1944,16 +1944,15 @@ tailwind.config = {
 
     const cell = hexagonalState.cells[index];
     const seedCell = hexagonalState.cells[hexagonalState.seedIndex];
-    const dq = cell.q - seedCell.q;
-    const dr = cell.r - seedCell.r;
-    const lateral = dq + dr * 0.5;
-    const centralHalfWidth = 1.2 + Math.max(0, 2.4 - Math.abs(dr)) * 0.18;
-    const overlapBand = 0.7;
+    const dx = (cell.mesh.position.x - seedCell.mesh.position.x) / hexagonalState.hexRadius;
+    const dz = (cell.mesh.position.z - seedCell.mesh.position.z) / hexagonalState.hexRadius;
+    const centralHalfWidth = 0.92 + Math.max(0, 2.0 - Math.abs(dz)) * 0.14;
+    const overlapBand = 0.48;
 
-    if (Math.abs(lateral) <= centralHalfWidth) return [1];
-    if (lateral > centralHalfWidth && lateral <= centralHalfWidth + overlapBand) return [1, 2];
-    if (lateral < -centralHalfWidth && lateral >= -centralHalfWidth - overlapBand) return [0, 1];
-    if (lateral < 0) return [0];
+    if (Math.abs(dx) <= centralHalfWidth) return [1];
+    if (dx > centralHalfWidth && dx <= centralHalfWidth + overlapBand) return [1, 2];
+    if (dx < -centralHalfWidth && dx >= -centralHalfWidth - overlapBand) return [0, 1];
+    if (dx < 0) return [0];
     return [2];
   }
 
