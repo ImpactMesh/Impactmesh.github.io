@@ -1817,16 +1817,45 @@ tailwind.config = {
     };
   }
 
-  function buildVoronoiCells(sites, bounds) {
-    const basePolygon = [
+  function pointInPolygon(point, polygon) {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const a = polygon[i];
+      const b = polygon[j];
+      const intersects = ((a.z > point.z) !== (b.z > point.z))
+        && (point.x < ((b.x - a.x) * (point.z - a.z)) / ((b.z - a.z) || 0.000001) + a.x);
+      if (intersects) inside = !inside;
+    }
+    return inside;
+  }
+
+  function createAreasBoundaryPolygon(bounds) {
+    const centerX = (bounds.minX + bounds.maxX) * 0.5;
+    const centerZ = (bounds.minZ + bounds.maxZ) * 0.5;
+    const radiusX = (bounds.maxX - bounds.minX) * 0.47;
+    const radiusZ = (bounds.maxZ - bounds.minZ) * 0.47;
+    const radii = [1.02, 0.94, 1.08, 0.9, 1.03, 0.92, 1.07, 0.88, 0.98, 0.91, 1.05, 0.93, 1.01, 0.9];
+    return radii.map((scale, index) => {
+      const angle = (-Math.PI * 0.5) + (index / radii.length) * Math.PI * 2;
+      const xScale = scale * (0.9 + Math.sin(angle * 2.0 + 0.35) * 0.08);
+      const zScale = scale * (0.9 + Math.cos(angle * 3.0 - 0.4) * 0.07);
+      return {
+        x: centerX + Math.cos(angle) * radiusX * xScale,
+        z: centerZ + Math.sin(angle) * radiusZ * zScale
+      };
+    });
+  }
+
+  function buildVoronoiCells(sites, bounds, basePolygon = null) {
+    const clipPolygon = (basePolygon || [
       { x: bounds.minX, z: bounds.minZ },
       { x: bounds.maxX, z: bounds.minZ },
       { x: bounds.maxX, z: bounds.maxZ },
       { x: bounds.minX, z: bounds.maxZ }
-    ];
+    ]).map((point) => ({ x: point.x, z: point.z }));
 
     return sites.map((site, siteIndex) => {
-      let polygon = basePolygon.map((point) => ({ x: point.x, z: point.z }));
+      let polygon = clipPolygon.map((point) => ({ x: point.x, z: point.z }));
       sites.forEach((other, otherIndex) => {
         if (siteIndex === otherIndex || !polygon.length) return;
         polygon = clipPolygonAgainstBisector(polygon, site, other);
@@ -1870,7 +1899,7 @@ tailwind.config = {
     return adjacency.map((neighbors) => [...neighbors]);
   }
 
-  function buildAreasSites(bounds, rng) {
+  function buildAreasSites(bounds, rng, boundaryPolygon) {
     const macroBlueprint = [
       { x: -0.34, z: -0.22 },
       { x: 0.28, z: -0.08 },
@@ -1893,6 +1922,10 @@ tailwind.config = {
     const dispersedTarget = 17;
     const clusteredPerCenter = 4;
 
+    function insideBoundary(candidate) {
+      return pointInPolygon(candidate, boundaryPolygon);
+    }
+
     function farFromMacros(candidate) {
       return Math.min(...macroSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z))) >= macroClearance;
     }
@@ -1904,6 +1937,7 @@ tailwind.config = {
         x: bounds.minX + 0.48 + rng() * ((bounds.maxX - bounds.minX) - 0.96),
         z: bounds.minZ + 0.48 + rng() * ((bounds.maxZ - bounds.minZ) - 0.96)
       };
+      if (!insideBoundary(candidate)) continue;
       if (!farFromMacros(candidate)) continue;
       const minDistance = microSites.length
         ? Math.min(...microSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z)))
@@ -1924,6 +1958,7 @@ tailwind.config = {
           z: center.z + Math.sin(angle) * radius
         };
         if (candidate.x <= bounds.minX + 0.35 || candidate.x >= bounds.maxX - 0.35 || candidate.z <= bounds.minZ + 0.35 || candidate.z >= bounds.maxZ - 0.35) continue;
+        if (!insideBoundary(candidate)) continue;
         if (!farFromMacros(candidate)) continue;
         const minDistance = microSites.length
           ? Math.min(...microSites.map((site) => Math.hypot(candidate.x - site.x, candidate.z - site.z)))
@@ -1967,15 +2002,28 @@ tailwind.config = {
 
     const border = new THREE.LineSegments(
       new THREE.EdgesGeometry(new THREE.BoxGeometry(boardWidth + 0.28, 0.02, boardHeight + 0.28)),
-      new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.16 })
+      new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.12 })
     );
     border.position.y = -0.01;
     group.add(border);
 
-    const rng = createSeededRandom(0xA3EA51);
-    const initialSites = buildAreasSites(bounds, rng);
+    const boundaryPolygon = createAreasBoundaryPolygon(bounds);
+    const boundaryShape = new THREE.Shape(boundaryPolygon.map((point, index) => new THREE.Vector2(
+      point.x - ((bounds.minX + bounds.maxX) * 0.5),
+      -(point.z - ((bounds.minZ + bounds.maxZ) * 0.5))
+    )));
+    const boundaryOutline = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.ShapeGeometry(boundaryShape)),
+      new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.18 })
+    );
+    boundaryOutline.rotation.x = -Math.PI / 2;
+    boundaryOutline.position.set((bounds.minX + bounds.maxX) * 0.5, -0.015, (bounds.minZ + bounds.maxZ) * 0.5);
+    group.add(boundaryOutline);
 
-    const relaxedSites = buildVoronoiCells(initialSites, bounds).map((cell, index) => {
+    const rng = createSeededRandom(0xA3EA51);
+    const initialSites = buildAreasSites(bounds, rng, boundaryPolygon);
+
+    const relaxedSites = buildVoronoiCells(initialSites, bounds, boundaryPolygon).map((cell, index) => {
       const source = initialSites[index];
       const blend = source.kind === 'macro' ? 0.86 : 0.2;
       return {
@@ -1986,7 +2034,7 @@ tailwind.config = {
       };
     });
 
-    const areaCells = buildVoronoiCells(relaxedSites, bounds);
+    const areaCells = buildVoronoiCells(relaxedSites, bounds, boundaryPolygon);
     const adjacency = buildVoronoiAdjacency(areaCells);
     const cells = [];
 
