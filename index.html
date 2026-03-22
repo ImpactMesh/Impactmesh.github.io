@@ -2047,22 +2047,75 @@ tailwind.config = {
     ];
   }
 
+  function computeAreasRegionAnchors() {
+    if (!areasState || areasState.seedIndex === null) return [];
+
+    const seedCell = areasState.cells[areasState.seedIndex];
+    const aliveIndexes = [...areasState.alive].filter((index) => index !== areasState.seedIndex);
+    const defaultAnchors = [
+      { x: seedCell.centroid.x - 1.2, z: seedCell.centroid.z + 0.9 },
+      { x: seedCell.centroid.x, z: seedCell.centroid.z - 0.95 },
+      { x: seedCell.centroid.x + 1.2, z: seedCell.centroid.z + 0.9 }
+    ];
+
+    if (aliveIndexes.length < 3) return defaultAnchors;
+
+    const anchors = defaultAnchors.map((anchor) => ({ x: anchor.x, z: anchor.z }));
+    for (let iteration = 0; iteration < 6; iteration += 1) {
+      const groups = anchors.map(() => []);
+      aliveIndexes.forEach((index) => {
+        const cell = areasState.cells[index];
+        let bestAnchorIndex = 0;
+        let bestDistance = Infinity;
+        anchors.forEach((anchor, anchorIndex) => {
+          const distance = Math.hypot(cell.centroid.x - anchor.x, cell.centroid.z - anchor.z);
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            bestAnchorIndex = anchorIndex;
+          }
+        });
+        groups[bestAnchorIndex].push(cell.centroid);
+      });
+
+      anchors.forEach((anchor, anchorIndex) => {
+        const group = groups[anchorIndex];
+        if (!group.length) return;
+        const average = group.reduce((acc, point) => ({ x: acc.x + point.x, z: acc.z + point.z }), { x: 0, z: 0 });
+        anchor.x = average.x / group.length;
+        anchor.z = average.z / group.length;
+      });
+    }
+
+    return anchors;
+  }
+
+  function updateAreasRegionAnchors() {
+    if (!areasState) return;
+    areasState.regionAnchors = computeAreasRegionAnchors();
+  }
+
   function getAreaRegionMembership(index) {
     if (!areasState || areasState.seedIndex === null) return [];
     if (index === areasState.seedIndex) return [0, 1, 2];
 
     const cell = areasState.cells[index];
-    const seedCell = areasState.cells[areasState.seedIndex];
-    const dx = cell.centroid.x - seedCell.centroid.x;
-    const dz = cell.centroid.z - seedCell.centroid.z;
-    const centralHalfWidth = 1.05 + Math.max(0, 2.8 - Math.abs(dz)) * 0.22;
-    const overlapBand = 0.58;
+    const anchors = areasState.regionAnchors?.length ? areasState.regionAnchors : computeAreasRegionAnchors();
+    if (!anchors.length) return [1];
 
-    if (Math.abs(dx) <= centralHalfWidth) return [1];
-    if (dx > centralHalfWidth && dx <= centralHalfWidth + overlapBand) return [1, 2];
-    if (dx < -centralHalfWidth && dx >= -centralHalfWidth - overlapBand) return [0, 1];
-    if (dx < 0) return [0];
-    return [2];
+    const ranked = anchors
+      .map((anchor, anchorIndex) => ({
+        anchorIndex,
+        distance: Math.hypot(cell.centroid.x - anchor.x, cell.centroid.z - anchor.z)
+      }))
+      .sort((a, b) => a.distance - b.distance);
+
+    const primary = ranked[0].anchorIndex;
+    const memberships = [primary];
+    if (ranked[1] && (ranked[1].distance <= ranked[0].distance * 1.2 || (ranked[1].distance - ranked[0].distance) <= 0.52)) {
+      memberships.push(ranked[1].anchorIndex);
+    }
+
+    return memberships.sort((a, b) => a - b);
   }
 
   function getAreaRegionMembers(region) {
@@ -2144,10 +2197,11 @@ tailwind.config = {
       const points = buildAreaWorldPathPoints(edgePath.segments, edgePath.closed);
       const geometry = buildHexPolylineStripGeometry(points, edgePath.closed, lineThickness);
       if (!geometry) return;
-      const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.88, depthWrite: false, side: THREE.DoubleSide });
+      const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.88, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.y = region.lineHeight;
       mesh.userData.baseY = region.lineHeight;
+      mesh.renderOrder = 40;
       areasState.regionOverlayGroup.add(mesh);
       meshes.push(mesh);
       materials.push(material);
@@ -2186,7 +2240,7 @@ tailwind.config = {
     areasState.regions.forEach((region, index) => {
       const wave = Math.sin(time * 1.92 + index * 1.05);
       const pulse = 0.5 + wave * 0.5;
-      const lift = wave * 0.05;
+      const lift = pulse * 0.04;
 
       region.pulseMaterials.forEach((material) => {
         material.opacity = 0.12 + pulse * 0.88;
@@ -2294,11 +2348,13 @@ tailwind.config = {
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.set(centroid.x, 0.01, centroid.z);
       mesh.userData.cellIndex = cellIndex;
+      mesh.renderOrder = 6;
 
       const outline = new THREE.LineSegments(
         new THREE.EdgesGeometry(geometry),
         new THREE.LineBasicMaterial({ color: 0x4a2310, transparent: true, opacity: 0.9 })
       );
+      outline.renderOrder = 7;
       mesh.add(outline);
       group.add(mesh);
 
@@ -2330,6 +2386,7 @@ tailwind.config = {
       alive: new Set(),
       latest: new Set(),
       seedIndex: null,
+      regionAnchors: [],
       shardLabelIndex: null,
       startedAt: 0,
       lastGrowthAt: 0,
@@ -2438,6 +2495,7 @@ tailwind.config = {
     styleOverlayTag(configShardLabel, 0xffa347);
     showOverlayLabel(configCellLabel, 'STEM CELL', seedCell.mesh.position);
     hideOverlayLabel(configShardLabel);
+    updateAreasRegionAnchors();
     updateAreasRegions();
     configStageCaption.textContent = 'AREA SURFACE // STEM CELL INITIALIZING';
     renderConfigScene();
@@ -2525,6 +2583,7 @@ tailwind.config = {
 
     areasState.latest = nextFrontier;
     areasState.growthStep += 1;
+    updateAreasRegionAnchors();
     updateAreasShardLabel();
     updateAreasRegions();
     configStageCaption.textContent = `AREA SURFACE // GROWTH WAVE ${String(areasState.growthStep).padStart(2, '0')}`;
