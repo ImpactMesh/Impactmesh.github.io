@@ -1227,6 +1227,7 @@ tailwind.config = {
 
   function getOrthogonalRegionMembership(index) {
     if (!orthogonalState || orthogonalState.seedIndex === null) return [];
+    if (index === orthogonalState.seedIndex) return [0, 1, 2];
 
     const cell = orthogonalState.cells[index];
     const seedCell = orthogonalState.cells[orthogonalState.seedIndex];
@@ -1457,7 +1458,8 @@ tailwind.config = {
       const memberIndexes = getOrthogonalRegionMembers(region);
       clearOrthogonalRegionLines(region);
 
-      if (memberIndexes.length < region.minCells) {
+      const regionMinCells = memberIndexes.includes(orthogonalState.seedIndex) ? 1 : region.minCells;
+      if (memberIndexes.length < regionMinCells) {
         hideOverlayLabel(region.label);
         return;
       }
