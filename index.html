@@ -1726,7 +1726,7 @@ tailwind.config = {
   function prepareHexagonalConfiguration(autoStart) {
     clearConfigGroup();
     if (configRegionSvg) {
-      configRegionSvg.style.display = 'block';
+      configRegionSvg.style.display = 'none';
       configRegionSvg.innerHTML = '';
     }
 
@@ -1823,6 +1823,11 @@ tailwind.config = {
           z: corner.z - referenceCell.mesh.position.z
         }))
       : [];
+    const idealScale = hexRadius / cellRadius;
+    const idealCornerOffsets = referenceOffsets.map((offset) => ({
+      x: offset.x * idealScale,
+      z: offset.z * idealScale
+    }));
     const hexEdgeDescriptors = referenceOffsets.map((start, edgeIndex) => {
       const end = referenceOffsets[(edgeIndex + 1) % referenceOffsets.length];
       const midX = (start.x + end.x) * 0.5;
@@ -1868,6 +1873,7 @@ tailwind.config = {
       cells,
       cellIndexByKey,
       neighborDirections,
+      idealCornerOffsets,
       regionOverlayGroup,
       regions: [],
       running: false,
@@ -2034,10 +2040,10 @@ tailwind.config = {
 
   function clearHexagonalRegionLines(region) {
     if (!hexagonalState) return;
-    region?.lines?.forEach((line) => {
-      if (line?.parentNode) line.parentNode.removeChild(line);
-      line?.geometry?.dispose?.();
-      line?.material?.dispose?.();
+    region?.lines?.forEach((mesh) => {
+      hexagonalState.regionOverlayGroup.remove(mesh);
+      mesh.geometry?.dispose?.();
+      mesh.material?.dispose?.();
     });
     if (region) {
       region.lines = [];
@@ -2082,13 +2088,19 @@ tailwind.config = {
     memberIndexes.forEach((index) => {
       const cell = hexagonalState.cells[index];
       const corners = getHexagonalCellCorners(cell);
+      const logicalCorners = hexagonalState.idealCornerOffsets.map((offset) => ({
+        x: cell.mesh.position.x + offset.x,
+        z: cell.mesh.position.z + offset.z
+      }));
 
       hexagonalState.neighborDirections.forEach(({ dq, dr, startIndex, endIndex }) => {
         const neighborIndex = hexagonalState.cellIndexByKey.get(`${cell.q + dq},${cell.r + dr}`);
         if (neighborIndex !== undefined && memberSet.has(neighborIndex)) return;
         edges.push({
           start: corners[startIndex],
-          end: corners[endIndex]
+          end: corners[endIndex],
+          logicalStart: logicalCorners[startIndex],
+          logicalEnd: logicalCorners[endIndex]
         });
       });
     });
@@ -2105,10 +2117,10 @@ tailwind.config = {
 
     const vertexMap = new Map();
     const edgeRecords = edges.map((edge, index) => {
-      const startKey = makeHexPointKey(edge.start);
-      const endKey = makeHexPointKey(edge.end);
-      if (!vertexMap.has(startKey)) vertexMap.set(startKey, { point: edge.start, edges: [] });
-      if (!vertexMap.has(endKey)) vertexMap.set(endKey, { point: edge.end, edges: [] });
+      const startKey = makeHexPointKey(edge.logicalStart);
+      const endKey = makeHexPointKey(edge.logicalEnd);
+      if (!vertexMap.has(startKey)) vertexMap.set(startKey, { point: edge.logicalStart, edges: [] });
+      if (!vertexMap.has(endKey)) vertexMap.set(endKey, { point: edge.logicalEnd, edges: [] });
       const record = { index, startKey, endKey, start: edge.start, end: edge.end, used: false };
       vertexMap.get(startKey).edges.push(index);
       vertexMap.get(endKey).edges.push(index);
@@ -2124,7 +2136,7 @@ tailwind.config = {
     }
 
     function walkFrom(startKey, previousEdgeIndex, targetKey) {
-      const points = [];
+      const segments = [];
       let currentKey = startKey;
       let previous = previousEdgeIndex;
       let closed = false;
@@ -2135,18 +2147,20 @@ tailwind.config = {
         const nextEdge = edgeRecords[nextEdgeIndex];
         nextEdge.used = true;
 
-        const nextPoint = nextEdge.startKey === currentKey ? nextEdge.end : nextEdge.start;
-        currentKey = nextEdge.startKey === currentKey ? nextEdge.endKey : nextEdge.startKey;
-        previous = nextEdgeIndex;
-        points.push(nextPoint);
+        const forward = nextEdge.startKey === currentKey;
+        segments.push(forward
+          ? { start: nextEdge.start, end: nextEdge.end }
+          : { start: nextEdge.end, end: nextEdge.start });
 
+        currentKey = forward ? nextEdge.endKey : nextEdge.startKey;
+        previous = nextEdgeIndex;
         if (currentKey === targetKey) {
           closed = true;
           break;
         }
       }
 
-      return { points, closed };
+      return { segments, closed };
     }
 
     const paths = [];
@@ -2155,20 +2169,22 @@ tailwind.config = {
       if (seedEdge.used) return;
       seedEdge.used = true;
 
+      const seedSegment = { start: seedEdge.start, end: seedEdge.end };
       const forward = walkFrom(seedEdge.endKey, seedEdge.index, seedEdge.startKey);
       if (forward.closed) {
-        paths.push({ points: [seedEdge.start, seedEdge.end, ...forward.points], closed: true });
+        paths.push({ segments: [seedSegment, ...forward.segments], closed: true });
         return;
       }
 
       const backward = walkFrom(seedEdge.startKey, seedEdge.index, seedEdge.endKey);
       if (backward.closed) {
-        paths.push({ points: [seedEdge.end, seedEdge.start, ...backward.points], closed: true });
+        paths.push({ segments: [{ start: seedEdge.end, end: seedEdge.start }, ...backward.segments], closed: true });
         return;
       }
 
+      const backSegments = backward.segments.reverse().map((segment) => ({ start: segment.end, end: segment.start }));
       paths.push({
-        points: [...backward.points.reverse(), seedEdge.start, seedEdge.end, ...forward.points],
+        segments: [...backSegments, seedSegment, ...forward.segments],
         closed: false
       });
     });
@@ -2176,42 +2192,138 @@ tailwind.config = {
     return paths;
   }
 
-  function buildHexSvgPathData(points, y, closed) {
-    if (!points.length) return '';
-    const projected = points.map((point) => projectConfigPointToStage(point.x, y, point.z));
-    if (projected.some((point) => !point)) return '';
-
-    let d = `M ${projected[0].x} ${projected[0].y}`;
-    for (let i = 1; i < projected.length; i += 1) {
-      d += ` L ${projected[i].x} ${projected[i].y}`;
+  function intersectHexLinesXZ(aStart, aEnd, bStart, bEnd) {
+    const dax = aEnd.x - aStart.x;
+    const daz = aEnd.z - aStart.z;
+    const dbx = bEnd.x - bStart.x;
+    const dbz = bEnd.z - bStart.z;
+    const denominator = (dax * dbz) - (daz * dbx);
+    if (Math.abs(denominator) < 0.000001) {
+      return {
+        x: (aEnd.x + bStart.x) * 0.5,
+        z: (aEnd.z + bStart.z) * 0.5
+      };
     }
-    if (closed) d += ' Z';
-    return d;
+    const diffX = bStart.x - aStart.x;
+    const diffZ = bStart.z - aStart.z;
+    const t = ((diffX * dbz) - (diffZ * dbx)) / denominator;
+    return {
+      x: aStart.x + dax * t,
+      z: aStart.z + daz * t
+    };
+  }
+
+  function buildHexWorldPathPoints(segments, closed) {
+    if (!segments.length) return [];
+    const points = [];
+    if (closed) {
+      for (let i = 0; i < segments.length; i += 1) {
+        const prev = segments[(i - 1 + segments.length) % segments.length];
+        const current = segments[i];
+        points.push(intersectHexLinesXZ(prev.start, prev.end, current.start, current.end));
+      }
+    } else {
+      points.push(segments[0].start);
+      for (let i = 0; i < segments.length - 1; i += 1) {
+        const current = segments[i];
+        const next = segments[i + 1];
+        points.push(intersectHexLinesXZ(current.start, current.end, next.start, next.end));
+      }
+      points.push(segments[segments.length - 1].end);
+    }
+    return points;
+  }
+
+  function buildHexPolylineStripGeometry(points, closed, width) {
+    const pointCount = points.length;
+    if (pointCount < 2) return null;
+    const halfWidth = width * 0.5;
+    const leftPoints = [];
+    const rightPoints = [];
+
+    function normalize(vec) {
+      const length = Math.hypot(vec.x, vec.z) || 1;
+      return { x: vec.x / length, z: vec.z / length };
+    }
+
+    function leftNormal(dir) {
+      return { x: -dir.z, z: dir.x };
+    }
+
+    for (let i = 0; i < pointCount; i += 1) {
+      const point = points[i];
+      const prevPoint = i === 0 ? (closed ? points[pointCount - 1] : points[i]) : points[i - 1];
+      const nextPoint = i === pointCount - 1 ? (closed ? points[0] : points[i]) : points[i + 1];
+      const prevDir = normalize({ x: point.x - prevPoint.x, z: point.z - prevPoint.z });
+      const nextDir = normalize({ x: nextPoint.x - point.x, z: nextPoint.z - point.z });
+
+      let offset;
+      if (!closed && i === 0) {
+        const normal = leftNormal(nextDir);
+        offset = { x: normal.x * halfWidth, z: normal.z * halfWidth };
+      } else if (!closed && i === pointCount - 1) {
+        const normal = leftNormal(prevDir);
+        offset = { x: normal.x * halfWidth, z: normal.z * halfWidth };
+      } else {
+        const normalPrev = leftNormal(prevDir);
+        const normalNext = leftNormal(nextDir);
+        const join = normalize({ x: normalPrev.x + normalNext.x, z: normalPrev.z + normalNext.z });
+        const denom = (join.x * normalNext.x) + (join.z * normalNext.z);
+        const scale = Math.min(halfWidth / Math.max(Math.abs(denom), 0.2), halfWidth * 2.2);
+        offset = { x: join.x * scale, z: join.z * scale };
+      }
+
+      leftPoints.push({ x: point.x + offset.x, z: point.z + offset.z });
+      rightPoints.push({ x: point.x - offset.x, z: point.z - offset.z });
+    }
+
+    const positions = [];
+    const indices = [];
+    leftPoints.forEach((point, index) => {
+      positions.push(point.x, 0, point.z);
+      positions.push(rightPoints[index].x, 0, rightPoints[index].z);
+    });
+
+    const segmentCount = closed ? pointCount : pointCount - 1;
+    for (let i = 0; i < segmentCount; i += 1) {
+      const next = (i + 1) % pointCount;
+      const a = i * 2;
+      const b = a + 1;
+      const c = next * 2;
+      const d = c + 1;
+      indices.push(a, b, c, c, b, d);
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    return geometry;
   }
 
   function addHexEdgeMeshes(targetGroup, edgePaths, options = {}) {
+    const meshes = [];
+    const materials = [];
     const lineHeight = options.lineHeight ?? 0;
     const opacity = options.opacity ?? 0.88;
     const color = options.color ?? 0xff6600;
-    const lineThickness = options.lineThickness ?? 4.5;
-    if (!edgePaths.length || !configRegionSvg) return { meshes: [], materials: [] };
+    const lineThickness = options.lineThickness ?? 0.05;
+    if (!edgePaths.length) return { meshes: [], materials: [] };
 
-    const svgPaths = edgePaths.map((edgePath) => {
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', `#${color.toString(16).padStart(6, '0')}`);
-      path.setAttribute('stroke-width', String(lineThickness));
-      path.setAttribute('stroke-opacity', String(opacity));
-      path.setAttribute('stroke-linecap', 'round');
-      path.setAttribute('stroke-linejoin', 'round');
-      path.setAttribute('vector-effect', 'non-scaling-stroke');
-      path.dataset.baseY = String(lineHeight);
-      path.__pathData = edgePath;
-      configRegionSvg.appendChild(path);
-      return path;
+    edgePaths.forEach((edgePath) => {
+      const points = buildHexWorldPathPoints(edgePath.segments, edgePath.closed);
+      const geometry = buildHexPolylineStripGeometry(points, edgePath.closed, lineThickness);
+      if (!geometry) return;
+      const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.y = lineHeight;
+      mesh.userData.baseY = lineHeight;
+      targetGroup.add(mesh);
+      meshes.push(mesh);
+      materials.push(material);
     });
 
-    return { meshes: svgPaths, materials: svgPaths };
+    return { meshes, materials };
   }
 
   function buildHexagonalRegionOutlineMeshes(region, memberIndexes) {
@@ -2223,7 +2335,7 @@ tailwind.config = {
       color: region.color,
       opacity: 0.88,
       lineHeight: region.lineHeight,
-      lineThickness: 5.25
+      lineThickness: hexagonalState.cellRadius * 0.075
     });
     region.pulseMaterials.push(...materials);
     return meshes;
@@ -2260,24 +2372,20 @@ tailwind.config = {
   }
 
   function updateHexagonalRegionPulse(time) {
-    if (!hexagonalState?.regions?.length || !configRegionSvg) return;
+    if (!hexagonalState?.regions?.length) return;
     hexagonalState.regions.forEach((region, index) => {
       const wave = Math.sin(time * 1.92 + index * 1.05);
       const pulse = 0.5 + wave * 0.5;
       const lift = wave * 0.05;
-      const y = region.lineHeight + lift;
 
-      region.pulseMaterials.forEach((path) => {
-        if (path?.setAttribute) {
-          path.setAttribute('stroke-opacity', String(0.12 + pulse * 0.88));
-        }
+      region.pulseMaterials.forEach((material) => {
+        material.opacity = 0.12 + pulse * 0.88;
       });
 
-      region.lines.forEach((path) => {
-        const pathData = path?.__pathData;
-        if (!pathData) return;
-        const d = buildHexSvgPathData(pathData.points, y, pathData.closed);
-        if (d) path.setAttribute('d', d);
+      region.lines.forEach((mesh) => {
+        if (mesh?.userData?.baseY !== undefined) {
+          mesh.position.y = mesh.userData.baseY + lift;
+        }
       });
     });
   }
