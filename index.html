@@ -722,6 +722,7 @@ tailwind.config = {
             </div>
           </aside>
           <div id="config-three-stage" class="relative h-full min-h-[28rem] border border-primary/20 bg-[#050505] overflow-hidden">
+            <svg id="config-region-svg" class="pointer-events-none absolute inset-0 z-[6]" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
             <div class="pointer-events-none absolute inset-0 z-10">
               <div id="config-explainer-panel" class="hidden absolute top-4 left-4 max-w-[29rem] border border-primary/20 bg-black/72 px-4 py-3">
                 <div class="text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">SPATIAL MODEL</div>
@@ -778,6 +779,7 @@ tailwind.config = {
   let configActiveCamera;
   let configStage;
   let configStageCaption;
+  let configRegionSvg;
   let configExplainer;
   let configExplainerTypingTimeout;
   let configCellLabel;
@@ -889,6 +891,7 @@ tailwind.config = {
 
     configStage = document.getElementById('config-three-stage');
     configStageCaption = document.getElementById('config-stage-caption');
+    configRegionSvg = document.getElementById('config-region-svg');
     configExplainer = document.getElementById('config-explainer');
     configCellLabel = document.getElementById('config-cell-label');
     configShardLabel = document.getElementById('config-shard-label');
@@ -951,6 +954,12 @@ tailwind.config = {
       configOrthoCamera.updateProjectionMatrix();
     }
 
+    if (configRegionSvg) {
+      configRegionSvg.setAttribute('width', String(width));
+      configRegionSvg.setAttribute('height', String(height));
+      configRegionSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    }
+
     updateOverlayLabelPosition(configCellLabel);
     updateOverlayLabelPosition(configShardLabel);
     updateOverlayLabelPosition(configHoverLabel);
@@ -976,6 +985,10 @@ tailwind.config = {
     orthogonalState = null;
     hexagonalState = null;
     configHoveredCellIndex = null;
+    if (configRegionSvg) {
+      configRegionSvg.innerHTML = '';
+      configRegionSvg.style.display = 'none';
+    }
     hideOverlayLabel(configCellLabel);
     hideOverlayLabel(configShardLabel);
     hideOverlayLabel(configHoverLabel);
@@ -1029,6 +1042,7 @@ tailwind.config = {
 
   function renderPendingConfiguration(mode) {
     clearConfigGroup();
+    if (configRegionSvg) configRegionSvg.style.display = 'none';
     configActiveCamera = configPerspectiveCamera;
     configStageCaption.textContent = `${mode.toUpperCase().replaceAll('-', ' ')} // PENDING`;
     renderConfigScene();
@@ -1036,6 +1050,7 @@ tailwind.config = {
 
   function prepareOrthogonalConfiguration(autoStart) {
     clearConfigGroup();
+    if (configRegionSvg) configRegionSvg.style.display = 'none';
 
     configSelectedMode = '2d-orthogonal';
     configActiveCamera = configPerspectiveCamera;
@@ -1188,20 +1203,28 @@ tailwind.config = {
     element.classList.add('hidden');
   }
 
+  function projectConfigPointToStage(x, y, z) {
+    if (!configStage || !configActiveCamera) return null;
+    const point = new THREE.Vector3(x, y, z);
+    point.project(configActiveCamera);
+    return {
+      x: (point.x * 0.5 + 0.5) * configStage.clientWidth,
+      y: (-point.y * 0.5 + 0.5) * configStage.clientHeight,
+      ndcZ: point.z
+    };
+  }
+
   function updateOverlayLabelPosition(element) {
     if (!element || element.classList.contains('hidden') || !configStage || !configActiveCamera) return;
 
     const x = Number(element.dataset.worldX || 0);
     const y = Number(element.dataset.worldY || 0);
     const z = Number(element.dataset.worldZ || 0);
-    const point = new THREE.Vector3(x, y, z);
-    point.project(configActiveCamera);
+    const projected = projectConfigPointToStage(x, y, z);
+    if (!projected) return;
 
-    const px = (point.x * 0.5 + 0.5) * configStage.clientWidth;
-    const py = (-point.y * 0.5 + 0.5) * configStage.clientHeight;
-
-    element.style.left = `${px}px`;
-    element.style.top = `${py}px`;
+    element.style.left = `${projected.x}px`;
+    element.style.top = `${projected.y}px`;
   }
 
   function makeConfigCellId(row, col) {
@@ -1702,6 +1725,10 @@ tailwind.config = {
 
   function prepareHexagonalConfiguration(autoStart) {
     clearConfigGroup();
+    if (configRegionSvg) {
+      configRegionSvg.style.display = 'block';
+      configRegionSvg.innerHTML = '';
+    }
 
     configSelectedMode = '2d-hexagonal';
     configActiveCamera = configPerspectiveCamera;
@@ -1949,7 +1976,7 @@ tailwind.config = {
         labelOffsetX: -1.7,
         labelOffsetZ: -1.0,
         pulsePhase: 0,
-        lineHeight: 0.01005,
+        lineHeight: 0.09,
         lines: [],
         pulseMaterials: []
       },
@@ -1962,7 +1989,7 @@ tailwind.config = {
         labelOffsetX: 0,
         labelOffsetZ: -1.55,
         pulsePhase: 1.4,
-        lineHeight: 0.0101,
+        lineHeight: 0.22,
         lines: [],
         pulseMaterials: []
       },
@@ -1975,7 +2002,7 @@ tailwind.config = {
         labelOffsetX: 1.7,
         labelOffsetZ: -1.0,
         pulsePhase: 2.3,
-        lineHeight: 0.01015,
+        lineHeight: 0.36,
         lines: [],
         pulseMaterials: []
       }
@@ -2007,10 +2034,10 @@ tailwind.config = {
 
   function clearHexagonalRegionLines(region) {
     if (!hexagonalState) return;
-    region?.lines?.forEach((mesh) => {
-      hexagonalState.regionOverlayGroup.remove(mesh);
-      mesh.geometry?.dispose?.();
-      mesh.material?.dispose?.();
+    region?.lines?.forEach((line) => {
+      if (line?.parentNode) line.parentNode.removeChild(line);
+      line?.geometry?.dispose?.();
+      line?.material?.dispose?.();
     });
     if (region) {
       region.lines = [];
@@ -2070,32 +2097,26 @@ tailwind.config = {
   }
 
   function addHexEdgeMeshes(targetGroup, edges, options = {}) {
-    const meshes = [];
-    const materials = [];
     const lineHeight = options.lineHeight ?? 0;
     const opacity = options.opacity ?? 0.88;
     const color = options.color ?? 0xff6600;
-    const lineThickness = options.lineThickness ?? 0.03;
-    if (!edges.length) return { meshes: [], materials: [] };
+    const lineThickness = options.lineThickness ?? 4.5;
+    if (!edges.length || !configRegionSvg) return { meshes: [], materials: [] };
 
-    edges.forEach(({ start, end }) => {
-      const dx = end.x - start.x;
-      const dz = end.z - start.z;
-      const length = Math.hypot(dx, dz);
-      if (length <= 0.000001) return;
-
-      const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, depthTest: false });
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(length, 0.008, lineThickness), material);
-      mesh.position.set((start.x + end.x) * 0.5, lineHeight, (start.z + end.z) * 0.5);
-      mesh.rotation.y = Math.atan2(dz, dx);
-      mesh.renderOrder = 12;
-      mesh.userData.baseY = lineHeight;
-      targetGroup.add(mesh);
-      meshes.push(mesh);
-      materials.push(material);
+    const svgLines = edges.map(({ start, end }) => {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('stroke', `#${color.toString(16).padStart(6, '0')}`);
+      line.setAttribute('stroke-width', String(lineThickness));
+      line.setAttribute('stroke-opacity', String(opacity));
+      line.setAttribute('stroke-linecap', 'butt');
+      line.setAttribute('vector-effect', 'non-scaling-stroke');
+      line.dataset.baseY = String(lineHeight);
+      line.__edgeData = { start, end };
+      configRegionSvg.appendChild(line);
+      return line;
     });
 
-    return { meshes, materials };
+    return { meshes: svgLines, materials: svgLines };
   }
 
   function buildHexagonalRegionOutlineMeshes(region, memberIndexes) {
@@ -2106,7 +2127,7 @@ tailwind.config = {
       color: region.color,
       opacity: 0.88,
       lineHeight: region.lineHeight,
-      lineThickness: hexagonalState.cellRadius * 0.065
+      lineThickness: 5.25
     });
     region.pulseMaterials.push(...materials);
     return meshes;
@@ -2143,20 +2164,31 @@ tailwind.config = {
   }
 
   function updateHexagonalRegionPulse(time) {
-    if (!hexagonalState?.regions?.length) return;
+    if (!hexagonalState?.regions?.length || !configRegionSvg) return;
     hexagonalState.regions.forEach((region, index) => {
       const wave = Math.sin(time * 1.92 + index * 1.05);
       const pulse = 0.5 + wave * 0.5;
-      const lift = wave * 0.00002;
+      const lift = wave * 0.05;
 
-      region.pulseMaterials.forEach((material) => {
-        material.opacity = 0.12 + pulse * 0.88;
+      region.pulseMaterials.forEach((line) => {
+        if (line?.setAttribute) {
+          line.setAttribute('stroke-opacity', String(0.12 + pulse * 0.88));
+        } else if (line) {
+          line.opacity = 0.12 + pulse * 0.88;
+        }
       });
 
-      region.lines.forEach((mesh) => {
-        if (mesh?.userData?.baseY !== undefined) {
-          mesh.position.y = mesh.userData.baseY + lift;
-        }
+      region.lines.forEach((line) => {
+        const edge = line?.__edgeData;
+        if (!edge) return;
+        const y = region.lineHeight + lift;
+        const start = projectConfigPointToStage(edge.start.x, y, edge.start.z);
+        const end = projectConfigPointToStage(edge.end.x, y, edge.end.z);
+        if (!start || !end) return;
+        line.setAttribute('x1', String(start.x));
+        line.setAttribute('y1', String(start.y));
+        line.setAttribute('x2', String(end.x));
+        line.setAttribute('y2', String(end.y));
       });
     });
   }
