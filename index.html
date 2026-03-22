@@ -715,7 +715,7 @@ tailwind.config = {
             <div class="mt-5 space-y-3">
               <button id="config-btn-2d-orthogonal" type="button" class="w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom" onclick="selectConfigMode('2d-orthogonal')">2D ORTHOGONAL GRID</button>
               <button id="config-btn-2d-hexagonal" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('2d-hexagonal')">2D HEXAGONAL GRID</button>
-              <button id="config-btn-2d-areas" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('2d-areas')">2D AREAS</button>
+              <button id="config-btn-2d-areas" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('2d-areas')">2D ARBITRARY POLYGONS</button>
               <button id="config-btn-3d-orthogonal" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-orthogonal')">3D ORTHOGONAL GRID</button>
               <button id="config-btn-3d-hexagonal-stacked" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-stacked')">3D HEXAGONAL STACKED</button>
               <button id="config-btn-3d-hexagonal-offset" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-offset')">3D HEXAGONAL OFFSET</button>
@@ -2185,6 +2185,17 @@ tailwind.config = {
     });
   }
 
+  function updateAreasCameraOrbit(time) {
+    if (!areasState || configActiveCamera !== configPerspectiveCamera) return;
+    const angle = time * areasState.orbitSpeed;
+    configPerspectiveCamera.position.set(
+      Math.cos(angle) * areasState.orbitRadius,
+      areasState.orbitHeight,
+      Math.sin(angle) * areasState.orbitRadius * 0.82
+    );
+    configPerspectiveCamera.lookAt(0, 0, 0);
+  }
+
   function prepareAreasConfiguration(autoStart) {
     clearConfigGroup();
     if (configRegionSvg) {
@@ -2193,7 +2204,7 @@ tailwind.config = {
     }
 
     configSelectedMode = '2d-areas';
-    configActiveCamera = configOrthoCamera;
+    configActiveCamera = configPerspectiveCamera;
 
     const bounds = { minX: -5.8, maxX: 5.8, minZ: -4.6, maxZ: 4.6 };
     const boardWidth = bounds.maxX - bounds.minX;
@@ -2304,6 +2315,9 @@ tailwind.config = {
       startedAt: 0,
       lastGrowthAt: 0,
       growthStep: 0,
+      orbitRadius: Math.max(boardWidth, boardHeight) * 0.86,
+      orbitHeight: Math.max(boardWidth, boardHeight) * 0.62,
+      orbitSpeed: 0.12,
       maxAlive: 38,
       rng: createSeededRandom(0xA3EA52)
     };
@@ -2524,6 +2538,7 @@ tailwind.config = {
       }
     }
 
+    updateAreasCameraOrbit(time);
     updateAreasRegionPulse(time);
     updatePulsingOverlayLabel(configCellLabel, time, { phase: 0, speed: 1.8, scaleAmplitude: 0.035, opacityBase: 0.86, opacityAmplitude: 0.12, glow: 20 });
     updatePulsingOverlayLabel(configShardLabel, time, { phase: 1.2, speed: 1.5, scaleAmplitude: 0.025, opacityBase: 0.82, opacityAmplitude: 0.12, glow: 16 });
