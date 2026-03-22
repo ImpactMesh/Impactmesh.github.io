@@ -723,6 +723,10 @@ tailwind.config = {
           </aside>
           <div id="config-three-stage" class="relative h-full min-h-[28rem] border border-primary/20 bg-[#050505] overflow-hidden">
             <div class="pointer-events-none absolute inset-0 z-10">
+              <div class="absolute top-4 left-4 max-w-[29rem] border border-primary/20 bg-black/72 px-4 py-3">
+                <div class="text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">MOVEMENT MODEL</div>
+                <p id="config-explainer" class="mt-2 min-h-[4.75rem] text-[13px] leading-6 text-[#d8c4a2] tracking-[0.02em]"></p>
+              </div>
               <div id="config-stage-caption" class="absolute bottom-4 left-4 text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">2D TOP VIEW // STANDBY</div>
               <div id="config-cell-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-primary/40 bg-black/70 px-3 py-2 text-[10px] text-primary tracking-[0.28em] font-bold electric-bloom">STEM CELL</div>
               <div id="config-shard-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-tertiary/40 bg-black/70 px-3 py-2 text-[10px] text-tertiary tracking-[0.28em] font-bold yellow-bloom">SHARD CELLS</div>
@@ -774,6 +778,8 @@ tailwind.config = {
   let configActiveCamera;
   let configStage;
   let configStageCaption;
+  let configExplainer;
+  let configExplainerTypingTimeout;
   let configCellLabel;
   let configShardLabel;
   let configHoverLabel;
@@ -796,6 +802,40 @@ tailwind.config = {
     '3d-hexagonal-stacked': 'config-btn-3d-hexagonal-stacked',
     '3d-hexagonal-offset': 'config-btn-3d-hexagonal-offset'
   };
+
+  const CONFIG_EXPLAINER_TEXT = {
+    '2d-orthogonal': 'Orthogonal grids are common in games because movement, pathfinding and placement all snap cleanly to square cells. They are easy to read at a glance, but diagonal movement needs explicit rules if you want distance to feel fair.',
+    '2d-hexagonal': 'Hex grids give each unit six evenly spaced directions, so adjacency and movement stay consistent without awkward diagonal shortcuts. They are especially good for tactical games where range, spacing and maneuver need to stay precise.',
+    '2d-areas': 'Area movement replaces equal cells with irregular regions connected by borders. It works well for strategic maps, because the shape and size of each area can communicate terrain, roads, chokepoints and political geography.',
+    '3d-orthogonal': 'Orthogonal grids are common in games because movement, pathfinding and placement all snap cleanly to square cells. They are easy to read at a glance, but diagonal movement needs explicit rules if you want distance to feel fair.',
+    '3d-hexagonal-stacked': 'Hex grids give each unit six evenly spaced directions, so adjacency and movement stay consistent without awkward diagonal shortcuts. They are especially good for tactical games where range, spacing and maneuver need to stay precise.',
+    '3d-hexagonal-offset': 'Hex grids give each unit six evenly spaced directions, so adjacency and movement stay consistent without awkward diagonal shortcuts. They are especially good for tactical games where range, spacing and maneuver need to stay precise.'
+  };
+
+  function getConfigExplainerText(mode) {
+    return CONFIG_EXPLAINER_TEXT[mode] || '';
+  }
+
+  function startConfigExplainerTyping(mode) {
+    if (!configExplainer) return;
+    clearTimeout(configExplainerTypingTimeout);
+
+    const fullText = getConfigExplainerText(mode);
+    configExplainer.textContent = '';
+    if (!fullText) return;
+
+    let index = 0;
+    const typeNext = () => {
+      index += 1;
+      configExplainer.textContent = fullText.slice(0, index);
+      if (index >= fullText.length) return;
+      const char = fullText[index - 1];
+      const delay = char === '.' ? 46 : char === ',' ? 24 : 10;
+      configExplainerTypingTimeout = setTimeout(typeNext, delay);
+    };
+
+    typeNext();
+  }
 
   function openNotice(title, message) {
     document.getElementById('coming-soon-title').textContent = title;
@@ -845,6 +885,7 @@ tailwind.config = {
 
     configStage = document.getElementById('config-three-stage');
     configStageCaption = document.getElementById('config-stage-caption');
+    configExplainer = document.getElementById('config-explainer');
     configCellLabel = document.getElementById('config-cell-label');
     configShardLabel = document.getElementById('config-shard-label');
     configHoverLabel = document.getElementById('config-hover-label');
@@ -950,6 +991,7 @@ tailwind.config = {
   function selectConfigMode(mode) {
     configSelectedMode = mode;
     setConfigButtonState(mode);
+    startConfigExplainerTyping(mode);
 
     if (mode === '2d-orthogonal') {
       if (!orthogonalState) prepareOrthogonalConfiguration(false);
@@ -1054,6 +1096,7 @@ tailwind.config = {
     };
 
     configStageCaption.textContent = 'ORTHOGONAL SURFACE // CLICK GRID TO INITIATE';
+    startConfigExplainerTyping('2d-orthogonal');
     renderConfigScene();
 
     if (autoStart) startOrthogonalGrowth();
