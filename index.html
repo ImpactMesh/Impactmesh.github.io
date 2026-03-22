@@ -1373,12 +1373,12 @@ tailwind.config = {
   function updateOrthogonalRegionPulse(time) {
     if (!orthogonalState?.regions?.length) return;
     orthogonalState.regions.forEach((region, index) => {
-      const wave = Math.sin(time * 0.34 + index * 0.9);
+      const wave = Math.sin(time * 1.28 + index * 1.05);
       const pulse = 0.5 + wave * 0.5;
-      const lift = wave * 0.08;
+      const lift = wave * 0.16;
 
       region.pulseMaterials.forEach((material) => {
-        material.opacity = 0.28 + pulse * 0.68;
+        material.opacity = 0.12 + pulse * 0.88;
       });
 
       region.lines.forEach((mesh) => {
@@ -1388,14 +1388,14 @@ tailwind.config = {
       });
 
       updatePulsingOverlayLabel(region.label, time, {
-        phase: index * 0.9,
-        speed: 0.34,
+        phase: index * 1.05,
+        speed: 1.28,
         transformBase: '',
         transformOrigin: 'top right',
-        scaleAmplitude: 0.03,
-        opacityBase: 0.76,
-        opacityAmplitude: 0.16,
-        glow: 18
+        scaleAmplitude: 0.04,
+        opacityBase: 0.72,
+        opacityAmplitude: 0.22,
+        glow: 20
       });
     });
   }
