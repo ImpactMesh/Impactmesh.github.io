@@ -4378,7 +4378,7 @@ tailwind.config = {
     if (!hexagonalStackedState || !cell?.mesh) return cell?.mesh?.position || new THREE.Vector3();
     return new THREE.Vector3(
       cell.mesh.position.x,
-      cell.mesh.position.y + hexagonalStackedState.prismHeight * 0.18,
+      cell.mesh.position.y + hexagonalStackedState.prismHeight * 0.56,
       cell.mesh.position.z
     );
   }
@@ -4694,7 +4694,7 @@ tailwind.config = {
         labelOffsetX: -1.7,
         labelOffsetZ: -1.0,
         pulsePhase: 0,
-        lineHeight: hexagonalStackedState.prismHeight + 0.09,
+        lineHeight: 0.09,
         lines: [],
         pulseMaterials: []
       },
@@ -4707,7 +4707,7 @@ tailwind.config = {
         labelOffsetX: 0,
         labelOffsetZ: -1.55,
         pulsePhase: 1.4,
-        lineHeight: hexagonalStackedState.prismHeight + 0.22,
+        lineHeight: 0.22,
         lines: [],
         pulseMaterials: []
       },
@@ -4720,7 +4720,7 @@ tailwind.config = {
         labelOffsetX: 1.7,
         labelOffsetZ: -1.0,
         pulsePhase: 2.3,
-        lineHeight: hexagonalStackedState.prismHeight + 0.36,
+        lineHeight: 0.36,
         lines: [],
         pulseMaterials: []
       }
