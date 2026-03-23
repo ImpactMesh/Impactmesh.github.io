@@ -1560,7 +1560,7 @@ tailwind.config = {
     const labelPrefix = cellIndex === activeState.seedIndex ? 'STEM' : 'SHARD';
     if (activeState === orthogonal3dState) {
       const layer = (hitObject?.userData?.stackLayer || 'middle').toUpperCase();
-      return `${labelPrefix} ${layer} ID: ${cell.cellId}`;
+      return `${labelPrefix} ID: ${cell.cellId} (${layer})`;
     }
     return `${labelPrefix} ID: ${cell.cellId}`;
   }
