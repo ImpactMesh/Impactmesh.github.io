@@ -1945,65 +1945,100 @@ tailwind.config = {
 
     cell.state = state;
 
-    let fillColor = 0x130804;
-    let opacity = 0.14;
-    let edgeColor = 0x4a2310;
-    let edgeOpacity = 0.46;
-    let middleScaleY = 0.02;
-    let middleY = 0.01;
-    let middleEdgesVisible = false;
+    const middleStyle = {
+      fillColor: 0x130804,
+      opacity: 0.18,
+      edgeColor: 0x4a2310,
+      edgeOpacity: 0.46,
+      scaleY: 0.02,
+      y: 0.01,
+      edgesVisible: false
+    };
+    const auxStyle = {
+      fillColor: 0x130804,
+      opacity: 0.18,
+      edgeColor: 0x4a2310,
+      edgeOpacity: 0.46
+    };
 
     if (state === 'stem-bright') {
-      fillColor = 0xff6600;
-      opacity = 0.98;
-      edgeColor = 0xffb066;
-      edgeOpacity = 0.9;
-      middleScaleY = 1;
-      middleY = orthogonal3dState.cubeHeight * 0.5;
-      middleEdgesVisible = true;
+      middleStyle.fillColor = 0xff6600;
+      middleStyle.opacity = 1;
+      middleStyle.edgeColor = 0xffb066;
+      middleStyle.edgeOpacity = 0.94;
+      middleStyle.scaleY = 1;
+      middleStyle.y = orthogonal3dState.cubeHeight * 0.5;
+      middleStyle.edgesVisible = true;
+
+      auxStyle.fillColor = 0xd97a32;
+      auxStyle.opacity = 0.78;
+      auxStyle.edgeColor = 0xffb066;
+      auxStyle.edgeOpacity = 0.76;
     } else if (state === 'stem-dim') {
-      fillColor = 0x4d1b05;
-      opacity = 0.24;
-      edgeColor = 0x7a2d08;
-      edgeOpacity = 0.52;
-      middleScaleY = 1;
-      middleY = orthogonal3dState.cubeHeight * 0.5;
-      middleEdgesVisible = true;
+      middleStyle.fillColor = 0x4d1b05;
+      middleStyle.opacity = 0.36;
+      middleStyle.edgeColor = 0x7a2d08;
+      middleStyle.edgeOpacity = 0.58;
+      middleStyle.scaleY = 1;
+      middleStyle.y = orthogonal3dState.cubeHeight * 0.5;
+      middleStyle.edgesVisible = true;
+
+      auxStyle.fillColor = 0xd97a32;
+      auxStyle.opacity = 0.78;
+      auxStyle.edgeColor = 0xffb066;
+      auxStyle.edgeOpacity = 0.76;
     } else if (state === 'core') {
-      fillColor = 0xd97a32;
-      opacity = 0.68;
-      edgeColor = 0xffb066;
-      edgeOpacity = 0.7;
-      middleScaleY = 1;
-      middleY = orthogonal3dState.cubeHeight * 0.5;
-      middleEdgesVisible = true;
+      middleStyle.fillColor = 0xd97a32;
+      middleStyle.opacity = 0.78;
+      middleStyle.edgeColor = 0xffb066;
+      middleStyle.edgeOpacity = 0.76;
+      middleStyle.scaleY = 1;
+      middleStyle.y = orthogonal3dState.cubeHeight * 0.5;
+      middleStyle.edgesVisible = true;
+
+      auxStyle.fillColor = 0xd97a32;
+      auxStyle.opacity = 0.78;
+      auxStyle.edgeColor = 0xffb066;
+      auxStyle.edgeOpacity = 0.76;
     } else if (state === 'frontier') {
-      fillColor = 0xf0a45a;
-      opacity = 0.78;
-      edgeColor = 0xffc98e;
-      edgeOpacity = 0.82;
-      middleScaleY = 1;
-      middleY = orthogonal3dState.cubeHeight * 0.5;
-      middleEdgesVisible = true;
+      middleStyle.fillColor = 0xf0a45a;
+      middleStyle.opacity = 0.88;
+      middleStyle.edgeColor = 0xffc98e;
+      middleStyle.edgeOpacity = 0.86;
+      middleStyle.scaleY = 1;
+      middleStyle.y = orthogonal3dState.cubeHeight * 0.5;
+      middleStyle.edgesVisible = true;
+
+      auxStyle.fillColor = 0xf0a45a;
+      auxStyle.opacity = 0.88;
+      auxStyle.edgeColor = 0xffc98e;
+      auxStyle.edgeOpacity = 0.86;
     }
 
-    cell.baseOpacity = opacity;
+    cell.baseOpacity = middleStyle.opacity;
+
+    cell.material.color.setHex(middleStyle.fillColor);
+    cell.material.opacity = middleStyle.opacity;
+    if (cell.edges?.material) {
+      cell.edges.material.color.setHex(middleStyle.edgeColor);
+      cell.edges.material.opacity = middleStyle.edgeOpacity;
+    }
+
     [
-      [cell.material, cell.edges?.material],
       [cell.topMaterial, cell.topEdges?.material],
       [cell.bottomMaterial, cell.bottomEdges?.material]
     ].forEach(([material, edgeMaterial]) => {
-      material?.color.setHex(fillColor);
-      if (material) material.opacity = opacity;
+      material?.color.setHex(auxStyle.fillColor);
+      if (material) material.opacity = auxStyle.opacity;
       if (edgeMaterial) {
-        edgeMaterial.color.setHex(edgeColor);
-        edgeMaterial.opacity = edgeOpacity;
+        edgeMaterial.color.setHex(auxStyle.edgeColor);
+        edgeMaterial.opacity = auxStyle.edgeOpacity;
       }
     });
 
-    cell.mesh.scale.y = middleScaleY;
-    cell.mesh.position.y = middleY;
-    cell.edges.visible = middleEdgesVisible;
+    cell.mesh.scale.y = middleStyle.scaleY;
+    cell.mesh.position.y = middleStyle.y;
+    cell.edges.visible = middleStyle.edgesVisible;
   }
 
   function updateOrthogonal3dStackVisibility() {
@@ -2274,11 +2309,13 @@ tailwind.config = {
   }
 
   function getOrthogonal3dLabelPosition(cell) {
-    const highestMesh = cell.hasTop ? cell.topMesh : cell.mesh;
+    const anchorMesh = cell.state === 'stem-bright' || cell.state === 'stem-dim'
+      ? cell.mesh
+      : (cell.hasTop ? cell.topMesh : cell.mesh);
     return {
-      x: highestMesh.position.x,
-      y: highestMesh.position.y + orthogonal3dState.cubeHeight * 0.52,
-      z: highestMesh.position.z
+      x: anchorMesh.position.x,
+      y: anchorMesh.position.y + orthogonal3dState.cubeHeight * 0.52,
+      z: anchorMesh.position.z
     };
   }
 
