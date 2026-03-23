@@ -6260,58 +6260,59 @@ tailwind.config = {
     const basisA = new THREE.Vector3(cellRadius, cellRadius, 0);
     const basisB = new THREE.Vector3(cellRadius, 0, cellRadius);
     const basisC = new THREE.Vector3(0, cellRadius, cellRadius);
+    const sampleCoords = [
+      [0, 0, 0],
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1]
+    ];
     let maxDistance = 0;
 
-    for (let i = -3; i <= 3; i += 1) {
-      for (let j = -3; j <= 3; j += 1) {
-        for (let k = -3; k <= 3; k += 1) {
-          if (Math.hypot(i, j, k) > 4.15) continue;
-          const position = basisA.clone().multiplyScalar(i)
-            .add(basisB.clone().multiplyScalar(j))
-            .add(basisC.clone().multiplyScalar(k));
-          const isSeed = i === 0 && j === 0 && k === 0;
-          const radial = Math.hypot(i, j, k);
-          const material = new THREE.MeshBasicMaterial({
-            color: isSeed ? 0xff6600 : (radial < 2.25 ? 0xd97a32 : 0x2a1308),
-            transparent: true,
-            opacity: isSeed ? 0.98 : (radial < 2.25 ? 0.84 : 0.66),
-            depthWrite: true,
-            depthTest: true
-          });
-          const edgeMaterial = new THREE.LineBasicMaterial({
-            color: isSeed ? 0xfff6ea : 0xf8eee1,
-            transparent: true,
-            opacity: isSeed ? 0.94 : 0.56,
-            depthWrite: true,
-            depthTest: true
-          });
-          const mesh = new THREE.Mesh(cellGeometry, material);
-          mesh.position.copy(position);
-          mesh.userData.cellIndex = cells.length;
-          const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-          mesh.add(edges);
-          group.add(mesh);
+    sampleCoords.forEach(([i, j, k]) => {
+      const position = basisA.clone().multiplyScalar(i)
+        .add(basisB.clone().multiplyScalar(j))
+        .add(basisC.clone().multiplyScalar(k));
+      const isSeed = i === 0 && j === 0 && k === 0;
+      const radial = Math.hypot(i, j, k);
+      const material = new THREE.MeshBasicMaterial({
+        color: isSeed ? 0xff6600 : 0xd97a32,
+        transparent: true,
+        opacity: isSeed ? 0.98 : 0.84,
+        depthWrite: true,
+        depthTest: true
+      });
+      const edgeMaterial = new THREE.LineBasicMaterial({
+        color: isSeed ? 0xfff6ea : 0xf8eee1,
+        transparent: true,
+        opacity: isSeed ? 0.94 : 0.56,
+        depthWrite: true,
+        depthTest: true
+      });
+      const mesh = new THREE.Mesh(cellGeometry, material);
+      mesh.position.copy(position);
+      mesh.userData.cellIndex = cells.length;
+      const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+      mesh.add(edges);
+      group.add(mesh);
 
-          const cell = {
-            index: cells.length,
-            mesh,
-            edges,
-            material,
-            edgeMaterial,
-            cellId: makeConfigCellId(i + 7, (j + 3) * 7 + (k + 4)),
-            latticeI: i,
-            latticeJ: j,
-            latticeK: k,
-            state: isSeed ? 'stem-bright' : 'core'
-          };
-          cells.push(cell);
-          alive.add(cell.index);
-          maxDistance = Math.max(maxDistance, position.length());
-        }
-      }
-    }
+      const cell = {
+        index: cells.length,
+        mesh,
+        edges,
+        material,
+        edgeMaterial,
+        cellId: makeConfigCellId(i + 7, (j + 3) * 7 + (k + 4)),
+        latticeI: i,
+        latticeJ: j,
+        latticeK: k,
+        state: isSeed ? 'stem-bright' : 'core'
+      };
+      cells.push(cell);
+      alive.add(cell.index);
+      maxDistance = Math.max(maxDistance, position.length());
+    });
 
-    const seedIndex = cells.findIndex((cell) => cell.latticeI === 0 && cell.latticeJ === 0 && cell.latticeK === 0);
+    const seedIndex = 0;
     const base = new THREE.Mesh(
       new THREE.CircleGeometry(maxDistance + cellRadius * 4.8, 72),
       new THREE.MeshBasicMaterial({ color: 0x090909, transparent: true, opacity: 0.9 })
@@ -6328,8 +6329,11 @@ tailwind.config = {
       alive,
       seedIndex,
       cellRadius,
-      cameraPosition: new THREE.Vector3(maxDistance * 2.1, maxDistance * 1.55, maxDistance * 1.9),
-      lookAt: new THREE.Vector3(0, 0, 0)
+      orbitRadius: maxDistance * 2.55,
+      orbitHeight: maxDistance * 1.95,
+      orbitSpeed: 0.22,
+      startedAt: performance.now() * 0.001,
+      lookAt: new THREE.Vector3(cellRadius * 0.34, cellRadius * 0.34, cellRadius * 0.34)
     };
 
     styleOverlayTag(configCellLabel, 0xff6600);
@@ -6337,13 +6341,19 @@ tailwind.config = {
     hideOverlayLabel(configShardLabel);
     hideOverlayLabel(configHoverLabel);
     configRegionLabels.forEach(hideOverlayLabel);
-    configStageCaption.textContent = 'RHOMBIC DODECAHEDRON // DENSE PACKING';
+    configStageCaption.textContent = 'RHOMBIC DODECAHEDRON // 4-CELL SAMPLE';
     renderConfigScene();
   }
 
   function updateRhombicDodecahedronAnimation(time) {
     if (!rhombicDodecahedronState) return;
-    configPerspectiveCamera.position.copy(rhombicDodecahedronState.cameraPosition);
+    const elapsed = time - rhombicDodecahedronState.startedAt;
+    const angle = elapsed * rhombicDodecahedronState.orbitSpeed;
+    configPerspectiveCamera.position.set(
+      Math.cos(angle) * rhombicDodecahedronState.orbitRadius,
+      rhombicDodecahedronState.orbitHeight + Math.sin(angle * 1.7 + 0.35) * (rhombicDodecahedronState.orbitRadius * 0.08),
+      Math.sin(angle) * rhombicDodecahedronState.orbitRadius * 0.82
+    );
     configPerspectiveCamera.lookAt(rhombicDodecahedronState.lookAt);
     updateOverlayLabelPosition(configCellLabel);
     updateOverlayLabelPosition(configHoverLabel);
