@@ -702,7 +702,7 @@ tailwind.config = {
     <div class="relative h-full flex flex-col">
       <div class="flex items-center justify-between px-8 md:px-10 py-6 border-b border-primary/15 bg-black/30">
         <div>
-          <div class="text-[10px] text-tertiary tracking-[0.35em] font-bold yellow-bloom">GEOMETRIC CONFIGURATIONS</div>
+          <div class="text-sm md:text-base text-tertiary tracking-[0.32em] font-bold yellow-bloom">GEOMETRIC CONFIGURATIONS</div>
           <div class="text-primary/60 text-[10px] tracking-[0.28em] font-mono mt-2">SPATIAL_STRUCTURES_FOR_GAMES</div>
         </div>
         <button aria-label="Close configurations" class="text-primary text-4xl md:text-5xl leading-none font-black hover:text-tertiary transition-colors" onclick="closeConfigOverlay()">×</button>
@@ -710,12 +710,12 @@ tailwind.config = {
       <div class="flex-1 min-h-0 p-4 md:p-6">
         <div class="h-full grid grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] gap-4 md:gap-6">
           <aside class="border border-primary/20 bg-black/35 p-4 md:p-5 flex flex-col">
-            <div class="text-[10px] text-tertiary tracking-[0.35em] font-bold yellow-bloom">CONFIGURATION SET</div>
+            <div class="text-sm md:text-base text-tertiary tracking-[0.32em] font-bold yellow-bloom">CONFIGURATION SET</div>
             <div class="text-primary/55 text-[10px] tracking-[0.24em] font-mono mt-2">SELECT A SPATIAL STRUCTURE</div>
             <div class="mt-5 space-y-4">
               <div>
                 <div class="flex items-center gap-3">
-                  <div class="text-[10px] text-tertiary tracking-[0.32em] font-bold yellow-bloom">2D</div>
+                  <div class="text-xs md:text-sm text-tertiary tracking-[0.28em] font-bold yellow-bloom">2D</div>
                   <div class="h-px flex-1 bg-primary/18"></div>
                 </div>
                 <div class="mt-3 space-y-3">
@@ -726,7 +726,7 @@ tailwind.config = {
               </div>
               <div>
                 <div class="flex items-center gap-3 pt-1">
-                  <div class="text-[10px] text-tertiary tracking-[0.32em] font-bold yellow-bloom">3D</div>
+                  <div class="text-xs md:text-sm text-tertiary tracking-[0.28em] font-bold yellow-bloom">3D</div>
                   <div class="h-px flex-1 bg-primary/18"></div>
                 </div>
                 <div class="mt-3 space-y-3">
@@ -743,11 +743,11 @@ tailwind.config = {
             <svg id="config-region-svg" class="pointer-events-none absolute inset-0 z-[6]" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
             <div class="pointer-events-none absolute inset-0 z-10">
               <div id="config-explainer-panel" class="hidden absolute top-4 left-4 max-w-[29rem] border border-primary/20 bg-black/72 px-4 py-3">
-                <div id="config-explainer-title" class="text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">SPATIAL MODEL</div>
+                <div id="config-explainer-title" class="text-xs md:text-sm text-tertiary tracking-[0.24em] font-mono yellow-bloom">SPATIAL MODEL</div>
                 <p id="config-explainer" class="mt-2 min-h-[4.75rem] text-[13px] leading-6 text-[#d8c4a2] tracking-[0.02em]"></p>
               </div>
               <div id="config-topview-panel" class="hidden absolute left-4 w-[16rem] border border-primary/20 bg-black/72 px-3 py-3" style="top: 13.25rem;">
-                <div class="text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">ORTHOGRAPHIC TOP VIEW</div>
+                <div class="text-xs md:text-sm text-tertiary tracking-[0.24em] font-mono yellow-bloom">ORTHOGRAPHIC TOP VIEW</div>
                 <div id="config-topview-caption" class="mt-1 text-[9px] text-primary/55 tracking-[0.22em] font-mono uppercase">VERTICAL LAYERS CELL ALIGN CENTERS</div>
                 <div class="mt-2 border border-primary/15 bg-[#060606] p-2">
                   <svg id="config-topview-orthogonal" viewBox="0 0 160 112" class="hidden block w-full h-auto" aria-hidden="true">
@@ -827,9 +827,9 @@ tailwind.config = {
                   </svg>
                 </div>
               </div>
-              <div id="config-stage-caption" class="absolute bottom-4 left-4 text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">2D TOP VIEW // STANDBY</div>
+              <div id="config-stage-caption" class="absolute bottom-4 left-4 text-xs md:text-sm text-tertiary tracking-[0.24em] font-mono yellow-bloom">2D TOP VIEW // STANDBY</div>
               <div id="config-cell-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-primary/40 bg-black/70 px-3 py-2 text-[10px] text-primary tracking-[0.28em] font-bold electric-bloom">STEM CELL</div>
-              <div id="config-shard-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-tertiary/40 bg-black/70 px-3 py-2 text-[10px] text-tertiary tracking-[0.28em] font-bold yellow-bloom">SHARD CELLS</div>
+              <div id="config-shard-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-tertiary/40 bg-black/70 px-3 py-2 text-xs md:text-sm text-tertiary tracking-[0.24em] font-bold yellow-bloom">SHARD CELLS</div>
               <div id="config-hover-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-primary/35 bg-black/80 px-3 py-2 text-[10px] text-primary tracking-[0.24em] font-bold electric-bloom">ID: 000000</div>
               <div id="config-region-legend" class="absolute top-4 right-4 flex flex-col gap-2">
                 <div id="config-region-label-1" class="hidden flex items-center gap-3 border bg-black/70 px-3 py-2 text-[10px] tracking-[0.22em] font-bold uppercase"><span data-region-swatch class="block h-[2px] w-8 bg-current"></span><span>SHARD SET 1: SERVER 7A91C2</span></div>
