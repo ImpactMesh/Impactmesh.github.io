@@ -4912,9 +4912,9 @@ tailwind.config = {
 
     const topIndexes = hexagonalStackedState.topMembers || new Set();
     hexagonalStackedState.topMembers = topIndexes;
-    if (hexagonalStackedState.seedIndex !== null) {
-      topIndexes.add(hexagonalStackedState.seedIndex);
+    const canPromote = hexagonalStackedState.alive.size >= 8 && hexagonalStackedState.growthStep >= 3;
 
+    if (hexagonalStackedState.seedIndex !== null && canPromote) {
       hexagonalStackedState.regions.forEach((region) => {
         const members = getHexagonalStackedRegionMembers(region).filter((index) => index !== hexagonalStackedState.seedIndex);
         if (!members.length) return;
