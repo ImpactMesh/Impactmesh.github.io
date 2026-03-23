@@ -2015,6 +2015,18 @@ tailwind.config = {
       auxStyle.edgeOpacity = 0.92;
     }
 
+    if (orthogonal3dState.seedIndex !== null && index !== orthogonal3dState.seedIndex) {
+      const seedCell = orthogonal3dState.cells[orthogonal3dState.seedIndex];
+      const dr = Math.abs(cell.row - seedCell.row);
+      const dc = Math.abs(cell.col - seedCell.col);
+      if (Math.max(dr, dc) === 1) {
+        middleStyle.opacity *= 0.58;
+        middleStyle.edgeOpacity *= 0.72;
+        auxStyle.opacity *= 0.58;
+        auxStyle.edgeOpacity *= 0.72;
+      }
+    }
+
     cell.baseOpacity = middleStyle.opacity;
 
     cell.material.color.setHex(middleStyle.fillColor);
