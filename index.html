@@ -1485,6 +1485,70 @@ tailwind.config = {
     return activeState.cells.map((cell) => cell.mesh);
   }
 
+  function getOrthogonal3dVisibleMeshes() {
+    if (!orthogonal3dState?.cells?.length) return [];
+    return orthogonal3dState.cells.flatMap((cell) => {
+      const meshes = [];
+      if (cell.mesh.scale.y > 0.5) meshes.push(cell.mesh);
+      if (cell.topMesh.visible) meshes.push(cell.topMesh);
+      if (cell.bottomMesh.visible) meshes.push(cell.bottomMesh);
+      return meshes;
+    });
+  }
+
+  function pickOrthogonal3dHoverTarget(clientX, clientY) {
+    if (!configRenderer || !configStage || !orthogonal3dState || !configPerspectiveCamera) return null;
+
+    const rect = configRenderer.domElement.getBoundingClientRect();
+    const localX = clientX - rect.left;
+    const localY = clientY - rect.top;
+    let best = null;
+    let fallback = null;
+    const halfX = orthogonal3dState.cellSize * 0.5;
+    const halfZ = orthogonal3dState.cellSize * 0.5;
+
+    getOrthogonal3dVisibleMeshes().forEach((mesh) => {
+      const center = projectConfigPointToStage(mesh.position.x, mesh.position.y, mesh.position.z);
+      if (!center) return;
+      const centerDistance = Math.hypot(localX - center.x, localY - center.y);
+      if (!fallback || centerDistance < fallback.distance) {
+        fallback = { object: mesh, distance: centerDistance };
+      }
+
+      const halfY = orthogonal3dState.cubeHeight * 0.5 * (mesh.scale?.y ?? 1);
+      const corners = [
+        [-halfX, -halfY, -halfZ], [halfX, -halfY, -halfZ], [halfX, -halfY, halfZ], [-halfX, -halfY, halfZ],
+        [-halfX, halfY, -halfZ], [halfX, halfY, -halfZ], [halfX, halfY, halfZ], [-halfX, halfY, halfZ]
+      ].map(([dx, dy, dz]) => projectConfigPointToStage(mesh.position.x + dx, mesh.position.y + dy, mesh.position.z + dz)).filter(Boolean);
+      if (!corners.length) return;
+
+      const minX = Math.min(...corners.map((p) => p.x));
+      const maxX = Math.max(...corners.map((p) => p.x));
+      const minY = Math.min(...corners.map((p) => p.y));
+      const maxY = Math.max(...corners.map((p) => p.y));
+      const pad = 6;
+      if (localX < minX - pad || localX > maxX + pad || localY < minY - pad || localY > maxY + pad) return;
+
+      const dx = mesh.position.x - configPerspectiveCamera.position.x;
+      const dy = mesh.position.y - configPerspectiveCamera.position.y;
+      const dz = mesh.position.z - configPerspectiveCamera.position.z;
+      const cameraDistance = Math.hypot(dx, dy, dz);
+      const score = cameraDistance + centerDistance * 0.02;
+      if (!best || score < best.score) {
+        best = {
+          score,
+          object: mesh
+        };
+      }
+    });
+
+    if (best) return best;
+    if (fallback && fallback.distance <= 52) {
+      return { score: fallback.distance, object: fallback.object };
+    }
+    return null;
+  }
+
   function getConfigHoverWorldPosition(activeState, cell, hitObject) {
     if (activeState === orthogonal3dState && hitObject?.position) {
       return hitObject.position;
@@ -1555,20 +1619,25 @@ tailwind.config = {
     const activeState = getActiveGridState();
     if (!configRenderer || !configStage || !configRaycaster || !configActiveCamera || !activeState?.cells?.length) return;
 
-    const rect = configRenderer.domElement.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    configPointer.set(x, y);
-    configRaycaster.setFromCamera(configPointer, configActiveCamera);
+    let hitObject = null;
+    if (activeState === orthogonal3dState) {
+      hitObject = pickOrthogonal3dHoverTarget(event.clientX, event.clientY)?.object || null;
+    } else {
+      const rect = configRenderer.domElement.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      configPointer.set(x, y);
+      configRaycaster.setFromCamera(configPointer, configActiveCamera);
+      const intersects = configRaycaster.intersectObjects(getConfigInteractiveMeshes(activeState), false);
+      hitObject = intersects.find((entry) => entry.object?.userData?.cellIndex !== undefined)?.object || null;
+    }
 
-    const intersects = configRaycaster.intersectObjects(getConfigInteractiveMeshes(activeState), false);
-    const hit = intersects.find((entry) => entry.object?.userData?.cellIndex !== undefined);
-    if (!hit) {
+    if (!hitObject) {
       clearConfigHover();
       return;
     }
 
-    const cellIndex = hit.object.userData.cellIndex;
+    const cellIndex = hitObject.userData.cellIndex;
     const cell = activeState.cells[cellIndex];
     if (!cell || !activeState.alive.has(cellIndex)) {
       clearConfigHover();
@@ -1579,8 +1648,8 @@ tailwind.config = {
     styleOverlayTag(configHoverLabel, 0xffa347);
     showOverlayLabel(
       configHoverLabel,
-      formatConfigHoverLabel(activeState, cellIndex, cell, hit.object),
-      getConfigHoverWorldPosition(activeState, cell, hit.object)
+      formatConfigHoverLabel(activeState, cellIndex, cell, hitObject),
+      getConfigHoverWorldPosition(activeState, cell, hitObject)
     );
   }
 
