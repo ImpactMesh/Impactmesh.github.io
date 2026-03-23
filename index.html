@@ -1818,7 +1818,7 @@ tailwind.config = {
         mesh.userData.cellIndex = cells.length;
         const edges = new THREE.LineSegments(
           cellEdgeGeometry,
-          new THREE.LineBasicMaterial({ color: 0x4a2310, transparent: true, opacity: 0.46 })
+          new THREE.LineBasicMaterial({ color: 0xf3eee7, transparent: true, opacity: 0.56 })
         );
         mesh.add(edges);
         group.add(mesh);
@@ -1833,7 +1833,7 @@ tailwind.config = {
         topMesh.visible = false;
         const topEdges = new THREE.LineSegments(
           cellEdgeGeometry,
-          new THREE.LineBasicMaterial({ color: 0x4a2310, transparent: true, opacity: 0.46 })
+          new THREE.LineBasicMaterial({ color: 0xf3eee7, transparent: true, opacity: 0.56 })
         );
         topEdges.visible = false;
         topMesh.add(topEdges);
@@ -1849,7 +1849,7 @@ tailwind.config = {
         bottomMesh.visible = false;
         const bottomEdges = new THREE.LineSegments(
           cellEdgeGeometry,
-          new THREE.LineBasicMaterial({ color: 0x4a2310, transparent: true, opacity: 0.46 })
+          new THREE.LineBasicMaterial({ color: 0xf3eee7, transparent: true, opacity: 0.56 })
         );
         bottomEdges.visible = false;
         bottomMesh.add(bottomEdges);
@@ -1924,8 +1924,8 @@ tailwind.config = {
         material?.color.setHex(0x130804);
         if (material) material.opacity = 0.14;
         if (edgeMaterial) {
-          edgeMaterial.color.setHex(0x4a2310);
-          edgeMaterial.opacity = 0.46;
+          edgeMaterial.color.setHex(0xf3eee7);
+          edgeMaterial.opacity = 0.56;
         }
       });
       cell.mesh.scale.y = 0.02;
@@ -1948,8 +1948,8 @@ tailwind.config = {
     const middleStyle = {
       fillColor: 0x130804,
       opacity: 0.18,
-      edgeColor: 0x4a2310,
-      edgeOpacity: 0.46,
+      edgeColor: 0xf3eee7,
+      edgeOpacity: 0.56,
       scaleY: 0.02,
       y: 0.01,
       edgesVisible: false
@@ -1957,62 +1957,62 @@ tailwind.config = {
     const auxStyle = {
       fillColor: 0x130804,
       opacity: 0.18,
-      edgeColor: 0x4a2310,
-      edgeOpacity: 0.46
+      edgeColor: 0xf3eee7,
+      edgeOpacity: 0.56
     };
 
     if (state === 'stem-bright') {
       middleStyle.fillColor = 0xff6600;
       middleStyle.opacity = 1;
-      middleStyle.edgeColor = 0xffb066;
-      middleStyle.edgeOpacity = 0.94;
+      middleStyle.edgeColor = 0xfff6ea;
+      middleStyle.edgeOpacity = 0.98;
       middleStyle.scaleY = 1;
       middleStyle.y = orthogonal3dState.cubeHeight * 0.5;
       middleStyle.edgesVisible = true;
 
       auxStyle.fillColor = 0xd97a32;
       auxStyle.opacity = 0.78;
-      auxStyle.edgeColor = 0xffb066;
-      auxStyle.edgeOpacity = 0.76;
+      auxStyle.edgeColor = 0xfff1dc;
+      auxStyle.edgeOpacity = 0.86;
     } else if (state === 'stem-dim') {
       middleStyle.fillColor = 0x4d1b05;
       middleStyle.opacity = 0.36;
-      middleStyle.edgeColor = 0x7a2d08;
-      middleStyle.edgeOpacity = 0.58;
+      middleStyle.edgeColor = 0xffe7d2;
+      middleStyle.edgeOpacity = 0.72;
       middleStyle.scaleY = 1;
       middleStyle.y = orthogonal3dState.cubeHeight * 0.5;
       middleStyle.edgesVisible = true;
 
       auxStyle.fillColor = 0xd97a32;
       auxStyle.opacity = 0.78;
-      auxStyle.edgeColor = 0xffb066;
-      auxStyle.edgeOpacity = 0.76;
+      auxStyle.edgeColor = 0xfff1dc;
+      auxStyle.edgeOpacity = 0.86;
     } else if (state === 'core') {
       middleStyle.fillColor = 0xd97a32;
       middleStyle.opacity = 0.78;
-      middleStyle.edgeColor = 0xffb066;
-      middleStyle.edgeOpacity = 0.76;
+      middleStyle.edgeColor = 0xfff1dc;
+      middleStyle.edgeOpacity = 0.86;
       middleStyle.scaleY = 1;
       middleStyle.y = orthogonal3dState.cubeHeight * 0.5;
       middleStyle.edgesVisible = true;
 
       auxStyle.fillColor = 0xd97a32;
       auxStyle.opacity = 0.78;
-      auxStyle.edgeColor = 0xffb066;
-      auxStyle.edgeOpacity = 0.76;
+      auxStyle.edgeColor = 0xfff1dc;
+      auxStyle.edgeOpacity = 0.86;
     } else if (state === 'frontier') {
       middleStyle.fillColor = 0xf0a45a;
       middleStyle.opacity = 0.88;
-      middleStyle.edgeColor = 0xffc98e;
-      middleStyle.edgeOpacity = 0.86;
+      middleStyle.edgeColor = 0xfff7ee;
+      middleStyle.edgeOpacity = 0.92;
       middleStyle.scaleY = 1;
       middleStyle.y = orthogonal3dState.cubeHeight * 0.5;
       middleStyle.edgesVisible = true;
 
       auxStyle.fillColor = 0xf0a45a;
       auxStyle.opacity = 0.88;
-      auxStyle.edgeColor = 0xffc98e;
-      auxStyle.edgeOpacity = 0.86;
+      auxStyle.edgeColor = 0xfff7ee;
+      auxStyle.edgeOpacity = 0.92;
     }
 
     cell.baseOpacity = middleStyle.opacity;
