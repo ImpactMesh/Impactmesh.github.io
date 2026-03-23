@@ -1783,18 +1783,18 @@ tailwind.config = {
       new THREE.MeshBasicMaterial({ color: 0x090909 })
     );
     base.rotation.x = -Math.PI / 2;
-    base.position.y = -0.08;
+    base.position.y = -cubeHeight - 0.08;
     group.add(base);
 
     const gridHelper = new THREE.GridHelper(Math.max(boardWidth, boardHeight) + 1.5, cols, 0x5a2408, 0x241108);
-    gridHelper.position.y = -0.04;
+    gridHelper.position.y = -cubeHeight - 0.04;
     group.add(gridHelper);
 
     const border = new THREE.LineSegments(
       new THREE.EdgesGeometry(new THREE.BoxGeometry(boardWidth + 0.4, 0.02, boardHeight + 0.4)),
       new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.18 })
     );
-    border.position.y = -0.01;
+    border.position.y = -cubeHeight - 0.01;
     group.add(border);
 
     const regionOverlayGroup = new THREE.Group();
@@ -1806,17 +1806,15 @@ tailwind.config = {
 
     for (let row = 0; row < rows; row += 1) {
       for (let col = 0; col < cols; col += 1) {
+        const x = (col - (cols - 1) / 2) * spacing;
+        const z = (row - (rows - 1) / 2) * spacing;
         const material = new THREE.MeshBasicMaterial({
           color: 0x130804,
           transparent: true,
           opacity: 0.14
         });
         const mesh = new THREE.Mesh(cellGeometry, material);
-        mesh.position.set(
-          (col - (cols - 1) / 2) * spacing,
-          cubeHeight * 0.5,
-          (row - (rows - 1) / 2) * spacing
-        );
+        mesh.position.set(x, cubeHeight * 0.5, z);
         mesh.userData.cellIndex = cells.length;
         const edges = new THREE.LineSegments(
           cellEdgeGeometry,
@@ -1824,12 +1822,53 @@ tailwind.config = {
         );
         mesh.add(edges);
         group.add(mesh);
+
+        const topMaterial = new THREE.MeshBasicMaterial({
+          color: 0x130804,
+          transparent: true,
+          opacity: 0.14
+        });
+        const topMesh = new THREE.Mesh(cellGeometry, topMaterial);
+        topMesh.position.set(x, cubeHeight * 1.5, z);
+        topMesh.visible = false;
+        const topEdges = new THREE.LineSegments(
+          cellEdgeGeometry,
+          new THREE.LineBasicMaterial({ color: 0x4a2310, transparent: true, opacity: 0.46 })
+        );
+        topEdges.visible = false;
+        topMesh.add(topEdges);
+        group.add(topMesh);
+
+        const bottomMaterial = new THREE.MeshBasicMaterial({
+          color: 0x130804,
+          transparent: true,
+          opacity: 0.14
+        });
+        const bottomMesh = new THREE.Mesh(cellGeometry, bottomMaterial);
+        bottomMesh.position.set(x, -cubeHeight * 0.5, z);
+        bottomMesh.visible = false;
+        const bottomEdges = new THREE.LineSegments(
+          cellEdgeGeometry,
+          new THREE.LineBasicMaterial({ color: 0x4a2310, transparent: true, opacity: 0.46 })
+        );
+        bottomEdges.visible = false;
+        bottomMesh.add(bottomEdges);
+        group.add(bottomMesh);
+
         cells.push({
           row,
           col,
           mesh,
           material,
           edges,
+          topMesh,
+          topMaterial,
+          topEdges,
+          bottomMesh,
+          bottomMaterial,
+          bottomEdges,
+          hasTop: false,
+          hasBottom: false,
           cellId: makeConfigCellId(row, col),
           state: 'dead',
           baseOpacity: 0.14,
@@ -1875,9 +1914,27 @@ tailwind.config = {
     orthogonal3dState.cells.forEach((cell) => {
       cell.state = 'dead';
       cell.baseOpacity = 0.14;
-      cell.material.color.setHex(0x130804);
-      cell.material.opacity = 0.14;
-      if (cell.edges?.material) cell.edges.material.opacity = 0.46;
+      cell.hasTop = false;
+      cell.hasBottom = false;
+      [
+        [cell.material, cell.edges?.material],
+        [cell.topMaterial, cell.topEdges?.material],
+        [cell.bottomMaterial, cell.bottomEdges?.material]
+      ].forEach(([material, edgeMaterial]) => {
+        material?.color.setHex(0x130804);
+        if (material) material.opacity = 0.14;
+        if (edgeMaterial) {
+          edgeMaterial.color.setHex(0x4a2310);
+          edgeMaterial.opacity = 0.46;
+        }
+      });
+      cell.mesh.scale.y = 0.02;
+      cell.mesh.position.y = 0.01;
+      cell.edges.visible = false;
+      cell.topMesh.visible = false;
+      cell.topEdges.visible = false;
+      cell.bottomMesh.visible = false;
+      cell.bottomEdges.visible = false;
     });
   }
 
@@ -1888,55 +1945,126 @@ tailwind.config = {
 
     cell.state = state;
 
-    if (state === 'dead') {
-      cell.baseOpacity = 0.14;
-      cell.material.color.setHex(0x130804);
-      cell.material.opacity = cell.baseOpacity;
-      if (cell.edges?.material) {
-        cell.edges.material.color.setHex(0x4a2310);
-        cell.edges.material.opacity = 0.46;
-      }
-      return;
-    }
+    let fillColor = 0x130804;
+    let opacity = 0.14;
+    let edgeColor = 0x4a2310;
+    let edgeOpacity = 0.46;
+    let middleScaleY = 0.02;
+    let middleY = 0.01;
+    let middleEdgesVisible = false;
+
     if (state === 'stem-bright') {
-      cell.baseOpacity = 0.98;
-      cell.material.color.setHex(0xff6600);
-      cell.material.opacity = cell.baseOpacity;
-      if (cell.edges?.material) {
-        cell.edges.material.color.setHex(0xffb066);
-        cell.edges.material.opacity = 0.9;
-      }
-      return;
+      fillColor = 0xff6600;
+      opacity = 0.98;
+      edgeColor = 0xffb066;
+      edgeOpacity = 0.9;
+      middleScaleY = 1;
+      middleY = orthogonal3dState.cubeHeight * 0.5;
+      middleEdgesVisible = true;
+    } else if (state === 'stem-dim') {
+      fillColor = 0x4d1b05;
+      opacity = 0.24;
+      edgeColor = 0x7a2d08;
+      edgeOpacity = 0.52;
+      middleScaleY = 1;
+      middleY = orthogonal3dState.cubeHeight * 0.5;
+      middleEdgesVisible = true;
+    } else if (state === 'core') {
+      fillColor = 0xd97a32;
+      opacity = 0.68;
+      edgeColor = 0xffb066;
+      edgeOpacity = 0.7;
+      middleScaleY = 1;
+      middleY = orthogonal3dState.cubeHeight * 0.5;
+      middleEdgesVisible = true;
+    } else if (state === 'frontier') {
+      fillColor = 0xf0a45a;
+      opacity = 0.78;
+      edgeColor = 0xffc98e;
+      edgeOpacity = 0.82;
+      middleScaleY = 1;
+      middleY = orthogonal3dState.cubeHeight * 0.5;
+      middleEdgesVisible = true;
     }
-    if (state === 'stem-dim') {
-      cell.baseOpacity = 0.24;
-      cell.material.color.setHex(0x4d1b05);
-      cell.material.opacity = cell.baseOpacity;
-      if (cell.edges?.material) {
-        cell.edges.material.color.setHex(0x7a2d08);
-        cell.edges.material.opacity = 0.52;
+
+    cell.baseOpacity = opacity;
+    [
+      [cell.material, cell.edges?.material],
+      [cell.topMaterial, cell.topEdges?.material],
+      [cell.bottomMaterial, cell.bottomEdges?.material]
+    ].forEach(([material, edgeMaterial]) => {
+      material?.color.setHex(fillColor);
+      if (material) material.opacity = opacity;
+      if (edgeMaterial) {
+        edgeMaterial.color.setHex(edgeColor);
+        edgeMaterial.opacity = edgeOpacity;
       }
-      return;
+    });
+
+    cell.mesh.scale.y = middleScaleY;
+    cell.mesh.position.y = middleY;
+    cell.edges.visible = middleEdgesVisible;
+  }
+
+  function updateOrthogonal3dStackVisibility() {
+    if (!orthogonal3dState) return;
+
+    const topIndexes = new Set();
+    const bottomIndexes = new Set();
+    if (orthogonal3dState.seedIndex !== null) {
+      topIndexes.add(orthogonal3dState.seedIndex);
+      bottomIndexes.add(orthogonal3dState.seedIndex);
+
+      orthogonal3dState.regions.forEach((region) => {
+        const members = getOrthogonal3dRegionMembers(region).filter((index) => index !== orthogonal3dState.seedIndex);
+        if (!members.length) return;
+
+        const centroid = members.reduce((acc, index) => {
+          const cell = orthogonal3dState.cells[index];
+          acc.x += cell.mesh.position.x;
+          acc.z += cell.mesh.position.z;
+          return acc;
+        }, { x: 0, z: 0 });
+        centroid.x /= members.length;
+        centroid.z /= members.length;
+
+        const topCount = Math.max(1, Math.round(members.length * 0.28));
+        const bottomCount = Math.max(1, Math.round(members.length * 0.24));
+
+        const topRanked = members
+          .map((index) => {
+            const cell = orthogonal3dState.cells[index];
+            const localDistance = Math.hypot(cell.mesh.position.x - centroid.x, cell.mesh.position.z - centroid.z);
+            const hash = Math.sin((cell.row + 1.2) * 1.33 + (cell.col + 0.5) * 0.91 + region.index * 1.7) * 0.22;
+            return { index, score: localDistance * 0.82 + hash };
+          })
+          .sort((a, b) => a.score - b.score)
+          .slice(0, topCount);
+
+        const bottomRanked = members
+          .map((index) => {
+            const cell = orthogonal3dState.cells[index];
+            const localDistance = Math.hypot(cell.mesh.position.x - centroid.x, cell.mesh.position.z - centroid.z);
+            const hash = Math.cos((cell.row + 0.8) * 1.19 - (cell.col + 1.1) * 0.87 + region.index * 1.3) * 0.28;
+            return { index, score: localDistance * 0.74 - hash };
+          })
+          .sort((a, b) => a.score - b.score)
+          .slice(0, bottomCount);
+
+        topRanked.forEach(({ index }) => topIndexes.add(index));
+        bottomRanked.forEach(({ index }) => bottomIndexes.add(index));
+      });
     }
-    if (state === 'core') {
-      cell.baseOpacity = 0.68;
-      cell.material.color.setHex(0xd97a32);
-      cell.material.opacity = cell.baseOpacity;
-      if (cell.edges?.material) {
-        cell.edges.material.color.setHex(0xffb066);
-        cell.edges.material.opacity = 0.7;
-      }
-      return;
-    }
-    if (state === 'frontier') {
-      cell.baseOpacity = 0.78;
-      cell.material.color.setHex(0xf0a45a);
-      cell.material.opacity = cell.baseOpacity;
-      if (cell.edges?.material) {
-        cell.edges.material.color.setHex(0xffc98e);
-        cell.edges.material.opacity = 0.82;
-      }
-    }
+
+    orthogonal3dState.cells.forEach((cell, index) => {
+      const alive = orthogonal3dState.alive.has(index);
+      cell.hasTop = alive && topIndexes.has(index);
+      cell.hasBottom = alive && bottomIndexes.has(index);
+      cell.topMesh.visible = cell.hasTop;
+      cell.topEdges.visible = cell.hasTop;
+      cell.bottomMesh.visible = cell.hasBottom;
+      cell.bottomEdges.visible = cell.hasBottom;
+    });
   }
 
   function getOrthogonal3dNeighbors(index) {
@@ -2146,10 +2274,11 @@ tailwind.config = {
   }
 
   function getOrthogonal3dLabelPosition(cell) {
+    const highestMesh = cell.hasTop ? cell.topMesh : cell.mesh;
     return {
-      x: cell.mesh.position.x,
-      y: cell.mesh.position.y + orthogonal3dState.cubeHeight * 0.52,
-      z: cell.mesh.position.z
+      x: highestMesh.position.x,
+      y: highestMesh.position.y + orthogonal3dState.cubeHeight * 0.52,
+      z: highestMesh.position.z
     };
   }
 
@@ -2180,7 +2309,7 @@ tailwind.config = {
       orthogonal3dState.orbitHeight,
       Math.sin(angle) * orthogonal3dState.orbitRadius * 0.82
     );
-    configPerspectiveCamera.lookAt(0, orthogonal3dState.cubeHeight * 0.35, 0);
+    configPerspectiveCamera.lookAt(0, orthogonal3dState.cubeHeight * 0.95, 0);
   }
 
   function startOrthogonal3dGrowth() {
@@ -2214,6 +2343,7 @@ tailwind.config = {
     orthogonal3dState.growthStep = 0;
 
     setOrthogonal3dCellState(seedIndex, 'stem-bright');
+    updateOrthogonal3dStackVisibility();
     styleOverlayTag(configCellLabel, 0xff6600);
     styleOverlayTag(configShardLabel, 0xffa347);
     showOverlayLabel(configCellLabel, 'STEM CELL', getOrthogonal3dLabelPosition(seedCell));
@@ -2296,6 +2426,7 @@ tailwind.config = {
 
     orthogonal3dState.latest = nextFrontier;
     orthogonal3dState.growthStep += 1;
+    updateOrthogonal3dStackVisibility();
     updateOrthogonal3dShardCellLabel();
     updateOrthogonal3dRegions();
     configStageCaption.textContent = `3D ORTHOGONAL GRID // GROWTH WAVE ${String(orthogonal3dState.growthStep).padStart(2, '0')}`;
