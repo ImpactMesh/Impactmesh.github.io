@@ -732,7 +732,34 @@ tailwind.config = {
                 <div class="text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">ORTHOGRAPHIC TOP VIEW</div>
                 <div class="mt-1 text-[9px] text-primary/55 tracking-[0.22em] font-mono uppercase">VERTICAL LAYERS CELL ALIGN CENTERS</div>
                 <div class="mt-2 border border-primary/15 bg-[#060606] p-2">
-                  <svg viewBox="0 0 160 112" class="block w-full h-auto" aria-hidden="true">
+                  <svg id="config-topview-orthogonal" viewBox="0 0 160 112" class="hidden block w-full h-auto" aria-hidden="true">
+                    <g fill="none" stroke="#ff6600" stroke-opacity="0.16" stroke-width="1.2">
+                      <rect x="26" y="18" width="20" height="20"/>
+                      <rect x="50" y="18" width="20" height="20"/>
+                      <rect x="74" y="18" width="20" height="20"/>
+                      <rect x="98" y="18" width="20" height="20"/>
+                      <rect x="26" y="42" width="20" height="20"/>
+                      <rect x="50" y="42" width="20" height="20"/>
+                      <rect x="74" y="42" width="20" height="20"/>
+                      <rect x="98" y="42" width="20" height="20"/>
+                      <rect x="26" y="66" width="20" height="20"/>
+                      <rect x="50" y="66" width="20" height="20"/>
+                      <rect x="74" y="66" width="20" height="20"/>
+                    </g>
+                    <g fill="#d97a32" fill-opacity="0.48" stroke="#ffe2c8" stroke-opacity="0.34" stroke-width="1.1">
+                      <rect x="50" y="18" width="20" height="20"/>
+                      <rect x="50" y="42" width="20" height="20"/>
+                      <rect x="74" y="42" width="20" height="20"/>
+                      <rect x="98" y="42" width="20" height="20"/>
+                      <rect x="74" y="66" width="20" height="20"/>
+                    </g>
+                    <g fill="#cfe8c5" fill-opacity="0.52" stroke="#f8fdf4" stroke-opacity="0.62" stroke-width="1">
+                      <rect x="74" y="42" width="20" height="20"/>
+                      <rect x="98" y="42" width="20" height="20"/>
+                      <rect x="74" y="66" width="20" height="20"/>
+                    </g>
+                  </svg>
+                  <svg id="config-topview-hexagonal" viewBox="0 0 160 112" class="hidden block w-full h-auto" aria-hidden="true">
                     <g fill="none" stroke="#ff6600" stroke-opacity="0.16" stroke-width="1.2">
                       <path d="M38 18 L50 25 L50 39 L38 46 L26 39 L26 25 Z"/>
                       <path d="M62 18 L74 25 L74 39 L62 46 L50 39 L50 25 Z"/>
@@ -854,8 +881,15 @@ tailwind.config = {
 
   function updateConfigTopviewPanel(mode) {
     const panel = document.getElementById('config-topview-panel');
+    const orthogonalSvg = document.getElementById('config-topview-orthogonal');
+    const hexagonalSvg = document.getElementById('config-topview-hexagonal');
     if (!panel) return;
-    panel.classList.toggle('hidden', mode !== '3d-hexagonal-stacked');
+
+    const showOrthogonal = mode === '3d-orthogonal';
+    const showHexagonal = mode === '3d-hexagonal-stacked';
+    panel.classList.toggle('hidden', !showOrthogonal && !showHexagonal);
+    orthogonalSvg?.classList.toggle('hidden', !showOrthogonal);
+    hexagonalSvg?.classList.toggle('hidden', !showHexagonal);
   }
 
   function startConfigExplainerTyping(mode) {
