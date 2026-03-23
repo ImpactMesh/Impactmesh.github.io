@@ -720,7 +720,7 @@ tailwind.config = {
               <button id="config-btn-3d-hexagonal-stacked" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-stacked')">3D HEXAGONAL STACKED</button>
               <button id="config-btn-3d-hexagonal-offset" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-offset')">3D HEXAGONAL OFFSET</button>
               <button id="config-btn-arbitrary-connectivity" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('arbitrary-connectivity')">ARBITRARY CONNECTIVITY</button>
-              <button id="config-btn-rhombic-dodecahedron" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('rhombic-dodecahedron')">RHOMBIC DODECAHEDRON</button>
+              <button id="config-btn-rhombic-dodecahedron" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('rhombic-dodecahedron')"><span class="block">RHOMBIC DODECAHEDRON</span><span class="block mt-1 text-[9px] tracking-[0.16em] opacity-70">(EXPERIMENTAL)</span></button>
             </div>
           </aside>
           <div id="config-three-stage" class="relative h-full min-h-[28rem] border border-primary/20 bg-[#050505] overflow-hidden">
@@ -905,7 +905,7 @@ tailwind.config = {
     '3d-hexagonal-stacked': '3D hexagonal stacked grids preserve the standard six-neighbor hex pattern within each layer and add one vertical connection above and one below. This keeps horizontal adjacency predictable while introducing a simple layered structure for three-dimensional simulation.',
     '3d-hexagonal-offset': '3D hexagonal offset grids shift successive layers so a cell aligns with three neighbors above and three below instead of a single vertical column. This produces denser cross-layer connectivity and a more uniform treatment of vertical transitions and spatial diagonals.',
     'arbitrary-connectivity': 'N-dimensional arbitrary connectivity lets a game define any adjacency structure it needs, whether spatial, systemic, social, or entirely abstract. It is useful when space is not the main organizing structure and progression, interaction, routing, or influence are driven by rules, relationships, or state transitions instead of geometric proximity.',
-    'rhombic-dodecahedron': 'This quick test packs rhombic dodecahedra on a dense face-centered cubic lattice, so the scene reads as a true 3D space-filling mass rather than a flat diamond tiling. The goal is only to verify whether this denser polyhedral packing is visually legible enough to justify further work.'
+    'rhombic-dodecahedron': 'A rhombic dodecahedron is the Voronoi cell of the face-centered cubic packing, so it fills space without gaps and gives each cell twelve face-neighbors instead of the six orthogonal or eight cube-diagonal patterns you get from simpler lattices. For games and spatial simulation, that means denser local adjacency, smoother directional coverage for influence and propagation, and a volumetric partition that is less axis-biased than cubes, but also harder to read quickly and harder to map to player movement rules. This experimental view is only for testing whether that higher-neighbor, space-filling geometry is visually understandable enough to justify deeper design work.'
   };
 
   function getConfigExplainerText(mode) {
@@ -6329,11 +6329,11 @@ tailwind.config = {
       alive,
       seedIndex,
       cellRadius,
-      orbitRadius: maxDistance * 2.55,
-      orbitHeight: maxDistance * 1.95,
+      orbitRadius: maxDistance * 1.28,
+      orbitHeight: maxDistance * 0.92,
       orbitSpeed: 0.22,
       startedAt: performance.now() * 0.001,
-      lookAt: new THREE.Vector3(cellRadius * 0.34, cellRadius * 0.34, cellRadius * 0.34)
+      lookAt: new THREE.Vector3(cellRadius * 0.5, cellRadius * 0.5, cellRadius * 0.5)
     };
 
     styleOverlayTag(configCellLabel, 0xff6600);
