@@ -5598,9 +5598,9 @@ tailwind.config = {
 
     const topIndexes = hexagonalOffsetState.topMembers || new Set();
     hexagonalOffsetState.topMembers = topIndexes;
-    if (hexagonalOffsetState.seedIndex !== null) {
-      topIndexes.add(hexagonalOffsetState.seedIndex);
+    const canPromote = hexagonalOffsetState.alive.size >= 8 && hexagonalOffsetState.growthStep >= 3;
 
+    if (hexagonalOffsetState.seedIndex !== null && canPromote) {
       hexagonalOffsetState.regions.forEach((region) => {
         const members = getHexagonalOffsetRegionMembers(region).filter((index) => index !== hexagonalOffsetState.seedIndex);
         if (!members.length) return;
@@ -5614,14 +5614,17 @@ tailwind.config = {
         centroid.x /= members.length;
         centroid.z /= members.length;
 
-        const topCount = Math.max(1, Math.round(members.length * 0.28));
+        const topCount = Math.max(1, Math.round(members.length * 0.14));
         const topRanked = members
           .map((index) => {
             const cell = hexagonalOffsetState.cells[index];
             const localDistance = Math.hypot(cell.mesh.position.x - centroid.x, cell.mesh.position.z - centroid.z);
-            const hash = Math.sin((cell.row + 1.2) * 1.33 + (cell.col + 0.5) * 0.91 + region.index * 1.7) * 0.22;
-            return { index, score: localDistance * 0.82 + hash };
+            const aliveNeighbors = countAliveHexagonalOffsetNeighbors(index);
+            const boundaryPenalty = Math.max(0, 6 - aliveNeighbors);
+            const hash = Math.sin((cell.row + 1.2) * 1.33 + (cell.col + 0.5) * 0.91 + region.index * 1.7) * 0.12;
+            return { index, aliveNeighbors, score: localDistance * 0.68 + boundaryPenalty * 0.92 + hash };
           })
+          .filter(({ aliveNeighbors }) => aliveNeighbors >= 4)
           .sort((a, b) => a.score - b.score)
           .slice(0, topCount);
 
