@@ -1477,6 +1477,30 @@ tailwind.config = {
     hideOverlayLabel(configHoverLabel);
   }
 
+  function getConfigInteractiveMeshes(activeState) {
+    if (!activeState?.cells?.length) return [];
+    if (activeState === orthogonal3dState) {
+      return activeState.cells.flatMap((cell) => [cell.mesh, cell.topMesh, cell.bottomMesh].filter(Boolean));
+    }
+    return activeState.cells.map((cell) => cell.mesh);
+  }
+
+  function getConfigHoverWorldPosition(activeState, cell, hitObject) {
+    if (activeState === orthogonal3dState && hitObject?.position) {
+      return hitObject.position;
+    }
+    return cell.mesh.position;
+  }
+
+  function formatConfigHoverLabel(activeState, cellIndex, cell, hitObject) {
+    const labelPrefix = cellIndex === activeState.seedIndex ? 'STEM' : 'SHARD';
+    if (activeState === orthogonal3dState) {
+      const layer = (hitObject?.userData?.stackLayer || 'middle').toUpperCase();
+      return `${labelPrefix} ${layer} ID: ${cell.cellId}`;
+    }
+    return `${labelPrefix} ID: ${cell.cellId}`;
+  }
+
   function updatePulsingOverlayLabel(element, time, options = {}) {
     if (!element || element.classList.contains('hidden')) return;
     const phase = options.phase ?? 0;
@@ -1537,7 +1561,7 @@ tailwind.config = {
     configPointer.set(x, y);
     configRaycaster.setFromCamera(configPointer, configActiveCamera);
 
-    const intersects = configRaycaster.intersectObjects(activeState.cells.map((cell) => cell.mesh), false);
+    const intersects = configRaycaster.intersectObjects(getConfigInteractiveMeshes(activeState), false);
     const hit = intersects.find((entry) => entry.object?.userData?.cellIndex !== undefined);
     if (!hit) {
       clearConfigHover();
@@ -1553,8 +1577,11 @@ tailwind.config = {
 
     configHoveredCellIndex = cellIndex;
     styleOverlayTag(configHoverLabel, 0xffa347);
-    const labelPrefix = cellIndex === activeState.seedIndex ? 'STEM' : 'SHARD';
-    showOverlayLabel(configHoverLabel, `${labelPrefix} ID: ${cell.cellId}`, cell.mesh.position);
+    showOverlayLabel(
+      configHoverLabel,
+      formatConfigHoverLabel(activeState, cellIndex, cell, hit.object),
+      getConfigHoverWorldPosition(activeState, cell, hit.object)
+    );
   }
 
   function styleRegionLabel(region) {
@@ -1816,6 +1843,7 @@ tailwind.config = {
         const mesh = new THREE.Mesh(cellGeometry, material);
         mesh.position.set(x, cubeHeight * 0.5, z);
         mesh.userData.cellIndex = cells.length;
+        mesh.userData.stackLayer = 'middle';
         const edges = new THREE.LineSegments(
           cellEdgeGeometry,
           new THREE.LineBasicMaterial({ color: 0xf3eee7, transparent: true, opacity: 0.56 })
@@ -1830,6 +1858,8 @@ tailwind.config = {
         });
         const topMesh = new THREE.Mesh(cellGeometry, topMaterial);
         topMesh.position.set(x, cubeHeight * 1.5, z);
+        topMesh.userData.cellIndex = cells.length;
+        topMesh.userData.stackLayer = 'top';
         topMesh.visible = false;
         const topEdges = new THREE.LineSegments(
           cellEdgeGeometry,
@@ -1846,6 +1876,8 @@ tailwind.config = {
         });
         const bottomMesh = new THREE.Mesh(cellGeometry, bottomMaterial);
         bottomMesh.position.set(x, -cubeHeight * 0.5, z);
+        bottomMesh.userData.cellIndex = cells.length;
+        bottomMesh.userData.stackLayer = 'bottom';
         bottomMesh.visible = false;
         const bottomEdges = new THREE.LineSegments(
           cellEdgeGeometry,
@@ -2020,10 +2052,10 @@ tailwind.config = {
       const dr = Math.abs(cell.row - seedCell.row);
       const dc = Math.abs(cell.col - seedCell.col);
       if (Math.max(dr, dc) === 1) {
-        middleStyle.opacity *= 0.58;
-        middleStyle.edgeOpacity *= 0.72;
-        auxStyle.opacity *= 0.58;
-        auxStyle.edgeOpacity *= 0.72;
+        middleStyle.opacity *= 0.34;
+        middleStyle.edgeOpacity *= 0.52;
+        auxStyle.opacity *= 0.34;
+        auxStyle.edgeOpacity *= 0.52;
       }
     }
 
