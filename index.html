@@ -892,8 +892,8 @@ tailwind.config = {
     currentLookAt: null,
     hasManualPose: false,
     resumeAt: 0,
-    resumeDelay: 0.2,
-    orbitSensitivity: 0.0072
+    resumeDelay: 0.35,
+    orbitSensitivity: 0.0042
   };
   let orthogonalState = null;
   let orthogonal3dState = null;
@@ -1155,8 +1155,8 @@ tailwind.config = {
       configCameraController.currentPosition.copy(defaultPosition);
       configCameraController.currentLookAt.copy(defaultLookAt);
     } else if (shouldResumeAuto) {
-      configCameraController.currentPosition.lerp(defaultPosition, 0.14);
-      configCameraController.currentLookAt.lerp(defaultLookAt, 0.14);
+      configCameraController.currentPosition.lerp(defaultPosition, 0.07);
+      configCameraController.currentLookAt.lerp(defaultLookAt, 0.07);
       if (configCameraController.currentPosition.distanceToSquared(defaultPosition) < 0.0004
         && configCameraController.currentLookAt.distanceToSquared(defaultLookAt) < 0.0004) {
         configCameraController.hasManualPose = false;
