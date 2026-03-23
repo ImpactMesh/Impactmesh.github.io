@@ -720,6 +720,7 @@ tailwind.config = {
               <button id="config-btn-3d-hexagonal-stacked" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-stacked')">3D HEXAGONAL STACKED</button>
               <button id="config-btn-3d-hexagonal-offset" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-offset')">3D HEXAGONAL OFFSET</button>
               <button id="config-btn-arbitrary-connectivity" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('arbitrary-connectivity')">ARBITRARY CONNECTIVITY</button>
+              <button id="config-btn-rhombic-tetrahedron" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('rhombic-tetrahedron')">RHOMBIC TETRAHEDRON</button>
             </div>
           </aside>
           <div id="config-three-stage" class="relative h-full min-h-[28rem] border border-primary/20 bg-[#050505] overflow-hidden">
@@ -880,6 +881,7 @@ tailwind.config = {
   let hexagonalStackedState = null;
   let hexagonalOffsetState = null;
   let arbitraryConnectivityState = null;
+  let rhombicTetrahedronState = null;
   let areasState = null;
 
   const CONFIG_BUTTON_ACTIVE = 'w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom';
@@ -891,7 +893,8 @@ tailwind.config = {
     '3d-orthogonal': 'config-btn-3d-orthogonal',
     '3d-hexagonal-stacked': 'config-btn-3d-hexagonal-stacked',
     '3d-hexagonal-offset': 'config-btn-3d-hexagonal-offset',
-    'arbitrary-connectivity': 'config-btn-arbitrary-connectivity'
+    'arbitrary-connectivity': 'config-btn-arbitrary-connectivity',
+    'rhombic-tetrahedron': 'config-btn-rhombic-tetrahedron'
   };
 
   const CONFIG_EXPLAINER_TEXT = {
@@ -901,7 +904,8 @@ tailwind.config = {
     '3d-orthogonal': '3D orthogonal grids extend the 2D orthogonal model into volumetric space while preserving the same square-cell adjacency on each layer. Each cell also connects to one cell above and one below, adding two direct vertical neighbors for movement, simulation and partitioning.',
     '3d-hexagonal-stacked': '3D hexagonal stacked grids preserve the standard six-neighbor hex pattern within each layer and add one vertical connection above and one below. This keeps horizontal adjacency predictable while introducing a simple layered structure for three-dimensional simulation.',
     '3d-hexagonal-offset': '3D hexagonal offset grids shift successive layers so a cell aligns with three neighbors above and three below instead of a single vertical column. This produces denser cross-layer connectivity and a more uniform treatment of vertical transitions and spatial diagonals.',
-    'arbitrary-connectivity': 'N-dimensional arbitrary connectivity lets a game define any adjacency structure it needs, whether spatial, systemic, social, or entirely abstract. It is useful when space is not the main organizing structure and progression, interaction, routing, or influence are driven by rules, relationships, or state transitions instead of geometric proximity.'
+    'arbitrary-connectivity': 'N-dimensional arbitrary connectivity lets a game define any adjacency structure it needs, whether spatial, systemic, social, or entirely abstract. It is useful when space is not the main organizing structure and progression, interaction, routing, or influence are driven by rules, relationships, or state transitions instead of geometric proximity.',
+    'rhombic-tetrahedron': 'This quick test packs rhombic cells on a dense oblique lattice so the construction reads as a tightly tessellated field of diamonds instead of square or hex cells. It is useful for checking whether a more angular, faceted packing could be legible enough to justify a deeper spatial mode later.'
   };
 
   function getConfigExplainerText(mode) {
@@ -1100,6 +1104,7 @@ tailwind.config = {
     hexagonalStackedState = null;
     hexagonalOffsetState = null;
     arbitraryConnectivityState = null;
+    rhombicTetrahedronState = null;
     areasState = null;
     configHoveredCellIndex = null;
     if (configRegionSvg) {
@@ -1139,6 +1144,7 @@ tailwind.config = {
     if (configSelectedMode === '3d-hexagonal-stacked') return hexagonalStackedState;
     if (configSelectedMode === '3d-hexagonal-offset') return hexagonalOffsetState;
     if (configSelectedMode === 'arbitrary-connectivity') return arbitraryConnectivityState;
+    if (configSelectedMode === 'rhombic-tetrahedron') return rhombicTetrahedronState;
     if (configSelectedMode === '2d-areas') return areasState;
     return null;
   }
@@ -1181,6 +1187,11 @@ tailwind.config = {
     if (mode === 'arbitrary-connectivity') {
       if (!arbitraryConnectivityState) prepareArbitraryConnectivityConfiguration(false);
       startArbitraryConnectivityGrowth();
+      return;
+    }
+
+    if (mode === 'rhombic-tetrahedron') {
+      prepareRhombicTetrahedronConfiguration(false);
       return;
     }
 
@@ -1807,12 +1818,24 @@ tailwind.config = {
         hitObject.position.z
       );
     }
+    if (activeState === rhombicTetrahedronState && hitObject?.position) {
+      const cellThickness = activeState?.cellThickness || 0.26;
+      return new THREE.Vector3(
+        hitObject.position.x,
+        hitObject.position.y + cellThickness * 1.35,
+        hitObject.position.z
+      );
+    }
     return cell.mesh.position;
   }
 
   function formatConfigHoverLabel(activeState, cellIndex, cell, hitObject) {
     if (activeState === arbitraryConnectivityState) {
       const labelPrefix = cellIndex === activeState.seedIndex ? 'STEM CELL' : 'CONNECTED CELL';
+      return `${labelPrefix} ID: ${cell.cellId}`;
+    }
+    if (activeState === rhombicTetrahedronState) {
+      const labelPrefix = cellIndex === activeState.seedIndex ? 'STEM CELL' : 'RHOMBIC CELL';
       return `${labelPrefix} ID: ${cell.cellId}`;
     }
 
@@ -6155,6 +6178,160 @@ tailwind.config = {
     updateOverlayLabelPosition(configHoverLabel);
   }
 
+  function getRhombicTetrahedronLabelPosition(cell) {
+    if (!rhombicTetrahedronState || !cell?.mesh) return cell?.mesh?.position || new THREE.Vector3();
+    return new THREE.Vector3(
+      cell.mesh.position.x,
+      cell.mesh.position.y + rhombicTetrahedronState.cellThickness * 1.35,
+      cell.mesh.position.z
+    );
+  }
+
+  function prepareRhombicTetrahedronConfiguration(autoStart) {
+    clearConfigGroup();
+    if (configRegionSvg) {
+      configRegionSvg.style.display = 'none';
+      configRegionSvg.innerHTML = '';
+    }
+
+    configSelectedMode = 'rhombic-tetrahedron';
+    configActiveCamera = configPerspectiveCamera;
+
+    const rng = createSeededRandom(0xA71B1C42);
+    const rows = 14;
+    const cols = 14;
+    const halfWidth = 0.48;
+    const halfHeight = 0.3;
+    const cellThickness = 0.24;
+    const group = new THREE.Group();
+
+    const rhombusShape = new THREE.Shape();
+    rhombusShape.moveTo(0, halfHeight);
+    rhombusShape.lineTo(halfWidth, 0);
+    rhombusShape.lineTo(0, -halfHeight);
+    rhombusShape.lineTo(-halfWidth, 0);
+    rhombusShape.closePath();
+
+    const cellGeometry = new THREE.ExtrudeGeometry(rhombusShape, { depth: cellThickness, bevelEnabled: false });
+    cellGeometry.rotateX(-Math.PI / 2);
+    cellGeometry.translate(0, cellThickness * 0.5, 0);
+    const edgeGeometry = new THREE.EdgesGeometry(cellGeometry);
+
+    const cells = [];
+    const alive = new Set();
+    const centerRow = Math.floor(rows / 2);
+    const centerCol = Math.floor(cols / 2);
+    const seedIndex = centerRow * cols + centerCol;
+    let maxRadius = 0;
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        const localRow = row - centerRow;
+        const localCol = col - centerCol;
+        const x = (localRow + localCol) * halfWidth;
+        const z = (localCol - localRow) * halfHeight;
+        const isSeed = row === centerRow && col === centerCol;
+        const radial = Math.hypot(localRow, localCol);
+        const baseY = isSeed ? 0.05 : ((rng() - 0.5) * 0.04);
+        const material = new THREE.MeshBasicMaterial({
+          color: isSeed ? 0xff6600 : (radial < 4.5 ? 0xd97a32 : 0x2a1308),
+          transparent: true,
+          opacity: isSeed ? 0.98 : (radial < 4.5 ? 0.78 : 0.58)
+        });
+        const edgeMaterial = new THREE.LineBasicMaterial({
+          color: isSeed ? 0xfff6ea : 0xf8eee1,
+          transparent: true,
+          opacity: isSeed ? 0.94 : 0.62
+        });
+        const mesh = new THREE.Mesh(cellGeometry, material);
+        mesh.position.set(x, baseY, z);
+        mesh.userData.cellIndex = cells.length;
+        const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+        mesh.add(edges);
+        group.add(mesh);
+
+        const cell = {
+          index: cells.length,
+          row,
+          col,
+          mesh,
+          edges,
+          material,
+          edgeMaterial,
+          cellId: makeConfigCellId(row, col),
+          state: isSeed ? 'stem-bright' : 'core',
+          baseOpacity: material.opacity,
+          baseEdgeOpacity: edgeMaterial.opacity,
+          baseY,
+          pulseOffset: rng() * Math.PI * 2,
+          isSeed
+        };
+        cells.push(cell);
+        alive.add(cell.index);
+        maxRadius = Math.max(maxRadius, Math.hypot(x, z));
+      }
+    }
+
+    const base = new THREE.Mesh(
+      new THREE.CircleGeometry(maxRadius + 1.15, 72),
+      new THREE.MeshBasicMaterial({ color: 0x090909, transparent: true, opacity: 0.94 })
+    );
+    base.rotation.x = -Math.PI / 2;
+    base.position.y = -0.06;
+    group.add(base);
+
+    configScene.add(group);
+    configCurrentGroup = group;
+    rhombicTetrahedronState = {
+      group,
+      cells,
+      alive,
+      seedIndex,
+      rows,
+      cols,
+      cellThickness,
+      orbitRadius: maxRadius + 4.2,
+      orbitHeight: 4.8,
+      orbitSpeed: 0.12,
+      startedAt: performance.now() * 0.001
+    };
+
+    styleOverlayTag(configCellLabel, 0xff6600);
+    showOverlayLabel(configCellLabel, 'STEM CELL', getRhombicTetrahedronLabelPosition(cells[seedIndex]));
+    hideOverlayLabel(configShardLabel);
+    hideOverlayLabel(configHoverLabel);
+    configRegionLabels.forEach(hideOverlayLabel);
+    configStageCaption.textContent = 'RHOMBIC TETRAHEDRON // DENSE PACKING';
+    renderConfigScene();
+  }
+
+  function updateRhombicTetrahedronAnimation(time) {
+    if (!rhombicTetrahedronState) return;
+
+    const elapsed = time - rhombicTetrahedronState.startedAt;
+    const angle = elapsed * rhombicTetrahedronState.orbitSpeed;
+    configPerspectiveCamera.position.set(
+      Math.cos(angle) * rhombicTetrahedronState.orbitRadius,
+      rhombicTetrahedronState.orbitHeight + Math.sin(angle * 1.9 + 0.3) * 0.85,
+      Math.sin(angle) * rhombicTetrahedronState.orbitRadius * 0.82
+    );
+    configPerspectiveCamera.lookAt(0, rhombicTetrahedronState.cellThickness * 0.9, 0);
+
+    rhombicTetrahedronState.cells.forEach((cell, index) => {
+      const wave = 0.5 + Math.sin(time * (cell.isSeed ? 3.8 : 1.65) + cell.pulseOffset) * 0.5;
+      cell.mesh.position.y = cell.baseY + (cell.isSeed ? 0.018 : 0.012) * Math.sin(time * 1.8 + cell.pulseOffset);
+      cell.material.opacity = cell.isSeed ? (0.9 + wave * 0.08) : Math.min(0.94, cell.baseOpacity * (0.84 + wave * 0.26));
+      cell.edgeMaterial.opacity = cell.isSeed ? (0.88 + wave * 0.08) : Math.min(0.88, cell.baseEdgeOpacity * (0.78 + wave * 0.24));
+      const scale = index === rhombicTetrahedronState.seedIndex ? (1.02 + wave * 0.04) : (0.996 + wave * 0.012);
+      cell.mesh.scale.set(scale, 1 + (scale - 1) * 0.55, scale);
+    });
+
+    updatePulsingOverlayLabel(configCellLabel, time, { phase: 0, speed: 1.8, scaleAmplitude: 0.035, opacityBase: 0.86, opacityAmplitude: 0.12, glow: 20 });
+    updatePulsingOverlayLabel(configHoverLabel, time, { phase: 0.5, speed: 1.9, scaleAmplitude: 0.018, opacityBase: 0.86, opacityAmplitude: 0.08, glow: 14 });
+    updateOverlayLabelPosition(configCellLabel);
+    updateOverlayLabelPosition(configHoverLabel);
+  }
+
   function getArbitraryConnectivityLabelPosition(node) {
     if (!arbitraryConnectivityState || !node?.mesh) return node?.mesh?.position || new THREE.Vector3();
     return new THREE.Vector3(
@@ -6805,6 +6982,7 @@ tailwind.config = {
     if (configSelectedMode === '3d-hexagonal-stacked') updateHexagonalStackedAnimation(time);
     if (configSelectedMode === '3d-hexagonal-offset') updateHexagonalOffsetAnimation(time);
     if (configSelectedMode === 'arbitrary-connectivity') updateArbitraryConnectivityAnimation(time);
+    if (configSelectedMode === 'rhombic-tetrahedron') updateRhombicTetrahedronAnimation(time);
     if (configSelectedMode === '2d-areas') updateAreasAnimation(time);
 
     if (!document.getElementById('config-overlay').classList.contains('hidden')) {
