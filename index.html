@@ -875,6 +875,26 @@ tailwind.config = {
   let configAnimationStarted = false;
   let configCurrentGroup = null;
   let configSelectedMode = null;
+  let configCameraController = {
+    pointerId: null,
+    isPointerDown: false,
+    isDragging: false,
+    dragThreshold: 5,
+    downX: 0,
+    downY: 0,
+    startTheta: 0,
+    startPhi: 0,
+    dragLookAt: null,
+    radius: 0,
+    theta: 0,
+    phi: 0,
+    currentPosition: null,
+    currentLookAt: null,
+    hasManualPose: false,
+    resumeAt: 0,
+    resumeDelay: 0.2,
+    orbitSensitivity: 0.0072
+  };
   let orthogonalState = null;
   let orthogonal3dState = null;
   let hexagonalState = null;
@@ -1022,12 +1042,19 @@ tailwind.config = {
     configRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     configRenderer.setClearColor(0x070707, 1);
     configRenderer.domElement.className = 'w-full h-full block';
+    configRenderer.domElement.style.touchAction = 'none';
     configStage.prepend(configRenderer.domElement);
 
     configRaycaster = new THREE.Raycaster();
     configPointer = new THREE.Vector2();
+    configCameraController.currentPosition = new THREE.Vector3();
+    configCameraController.currentLookAt = new THREE.Vector3();
+    configCameraController.dragLookAt = new THREE.Vector3();
+    configRenderer.domElement.addEventListener('pointerdown', handleConfigPointerDown);
     configRenderer.domElement.addEventListener('pointermove', handleConfigPointerMove);
-    configRenderer.domElement.addEventListener('pointerleave', clearConfigHover);
+    configRenderer.domElement.addEventListener('pointerup', handleConfigPointerUp);
+    configRenderer.domElement.addEventListener('pointercancel', handleConfigPointerUp);
+    configRenderer.domElement.addEventListener('pointerleave', handleConfigPointerLeave);
 
     configScene = new THREE.Scene();
     configScene.background = new THREE.Color(0x070707);
@@ -1086,6 +1113,62 @@ tailwind.config = {
     configRenderer.render(configScene, configActiveCamera);
   }
 
+  function resetConfigCameraController() {
+    configCameraController.pointerId = null;
+    configCameraController.isPointerDown = false;
+    configCameraController.isDragging = false;
+    configCameraController.hasManualPose = false;
+    configCameraController.resumeAt = 0;
+    configCameraController.currentPosition?.set(0, 0, 0);
+    configCameraController.currentLookAt?.set(0, 0, 0);
+    configCameraController.dragLookAt?.set(0, 0, 0);
+  }
+
+  function syncConfigCameraControllerFromCamera(lookAt) {
+    if (!configPerspectiveCamera || !lookAt) return;
+    const offset = configPerspectiveCamera.position.clone().sub(lookAt);
+    const radius = Math.max(0.001, offset.length());
+    configCameraController.radius = radius;
+    configCameraController.theta = Math.atan2(offset.z, offset.x);
+    configCameraController.phi = Math.acos(Math.max(-0.999, Math.min(0.999, offset.y / radius)));
+    configCameraController.currentPosition.copy(configPerspectiveCamera.position);
+    configCameraController.currentLookAt.copy(lookAt);
+  }
+
+  function applyConfigPerspectiveOrbit(defaultPosition, defaultLookAt, time) {
+    if (!configPerspectiveCamera || configActiveCamera !== configPerspectiveCamera) return;
+
+    if (!configCameraController.currentPosition || !configCameraController.currentLookAt) {
+      configCameraController.currentPosition = new THREE.Vector3();
+      configCameraController.currentLookAt = new THREE.Vector3();
+      configCameraController.dragLookAt = new THREE.Vector3();
+    }
+
+    if (configCameraController.isDragging) {
+      configPerspectiveCamera.position.copy(configCameraController.currentPosition);
+      configPerspectiveCamera.lookAt(configCameraController.currentLookAt);
+      return;
+    }
+
+    const shouldResumeAuto = !configCameraController.hasManualPose || time >= configCameraController.resumeAt;
+    if (!configCameraController.hasManualPose) {
+      configCameraController.currentPosition.copy(defaultPosition);
+      configCameraController.currentLookAt.copy(defaultLookAt);
+    } else if (shouldResumeAuto) {
+      configCameraController.currentPosition.lerp(defaultPosition, 0.14);
+      configCameraController.currentLookAt.lerp(defaultLookAt, 0.14);
+      if (configCameraController.currentPosition.distanceToSquared(defaultPosition) < 0.0004
+        && configCameraController.currentLookAt.distanceToSquared(defaultLookAt) < 0.0004) {
+        configCameraController.hasManualPose = false;
+        configCameraController.currentPosition.copy(defaultPosition);
+        configCameraController.currentLookAt.copy(defaultLookAt);
+      }
+    }
+
+    configPerspectiveCamera.position.copy(configCameraController.currentPosition);
+    configPerspectiveCamera.lookAt(configCameraController.currentLookAt);
+  }
+
   function clearConfigGroup() {
     if (configCurrentGroup) {
       configScene.remove(configCurrentGroup);
@@ -1107,6 +1190,7 @@ tailwind.config = {
     rhombicDodecahedronState = null;
     areasState = null;
     configHoveredCellIndex = null;
+    resetConfigCameraController();
     if (configRegionSvg) {
       configRegionSvg.innerHTML = '';
       configRegionSvg.style.display = 'none';
@@ -1890,17 +1974,89 @@ tailwind.config = {
   function updateOrthogonalCameraOrbit(time) {
     if (!orthogonalState || configActiveCamera !== configPerspectiveCamera) return;
     const angle = time * orthogonalState.orbitSpeed;
-    configPerspectiveCamera.position.set(
-      Math.cos(angle) * orthogonalState.orbitRadius,
-      orthogonalState.orbitHeight,
-      Math.sin(angle) * orthogonalState.orbitRadius * 0.82
+    applyConfigPerspectiveOrbit(
+      new THREE.Vector3(
+        Math.cos(angle) * orthogonalState.orbitRadius,
+        orthogonalState.orbitHeight,
+        Math.sin(angle) * orthogonalState.orbitRadius * 0.82
+      ),
+      new THREE.Vector3(0, 0, 0),
+      time
     );
-    configPerspectiveCamera.lookAt(0, 0, 0);
+  }
+
+  function handleConfigPointerDown(event) {
+    if (!configRenderer || !configPerspectiveCamera || configActiveCamera !== configPerspectiveCamera) return;
+    if (event.button !== 0) return;
+
+    configCameraController.pointerId = event.pointerId;
+    configCameraController.isPointerDown = true;
+    configCameraController.isDragging = false;
+    configCameraController.downX = event.clientX;
+    configCameraController.downY = event.clientY;
+    configCameraController.resumeAt = Infinity;
+    try {
+      configRenderer.domElement.setPointerCapture?.(event.pointerId);
+    } catch (_) {}
+    syncConfigCameraControllerFromCamera(configCameraController.currentLookAt.lengthSq() ? configCameraController.currentLookAt : new THREE.Vector3(0, 0, 0));
+    configCameraController.startTheta = configCameraController.theta;
+    configCameraController.startPhi = configCameraController.phi;
+    configCameraController.dragLookAt.copy(configCameraController.currentLookAt);
+  }
+
+  function handleConfigPointerUp(event) {
+    if (configCameraController.pointerId !== null && event.pointerId !== undefined && event.pointerId !== configCameraController.pointerId) return;
+    if (configRenderer?.domElement && configCameraController.pointerId !== null) {
+      try {
+        configRenderer.domElement.releasePointerCapture?.(configCameraController.pointerId);
+      } catch (_) {}
+    }
+    configCameraController.pointerId = null;
+    configCameraController.isPointerDown = false;
+    if (configCameraController.isDragging) {
+      configCameraController.isDragging = false;
+      configCameraController.hasManualPose = true;
+      configCameraController.resumeAt = performance.now() * 0.001 + configCameraController.resumeDelay;
+    }
+  }
+
+  function handleConfigPointerLeave() {
+    if (configCameraController.isPointerDown || configCameraController.isDragging) return;
+    clearConfigHover();
   }
 
   function handleConfigPointerMove(event) {
     const activeState = getActiveGridState();
     if (!configRenderer || !configStage || !configRaycaster || !configActiveCamera || !activeState?.cells?.length) return;
+
+    if (configCameraController.isPointerDown && configActiveCamera === configPerspectiveCamera) {
+      const deltaX = event.clientX - configCameraController.downX;
+      const deltaY = event.clientY - configCameraController.downY;
+      if (!configCameraController.isDragging && Math.hypot(deltaX, deltaY) >= configCameraController.dragThreshold) {
+        configCameraController.isDragging = true;
+        clearConfigHover();
+      }
+
+      if (configCameraController.isDragging) {
+        configCameraController.theta = configCameraController.startTheta - deltaX * configCameraController.orbitSensitivity;
+        configCameraController.phi = Math.max(0.22, Math.min(Math.PI - 0.22, configCameraController.startPhi + deltaY * configCameraController.orbitSensitivity));
+        const sinPhi = Math.sin(configCameraController.phi);
+        configCameraController.currentPosition.set(
+          configCameraController.dragLookAt.x + configCameraController.radius * sinPhi * Math.cos(configCameraController.theta),
+          configCameraController.dragLookAt.y + configCameraController.radius * Math.cos(configCameraController.phi),
+          configCameraController.dragLookAt.z + configCameraController.radius * sinPhi * Math.sin(configCameraController.theta)
+        );
+        configCameraController.currentLookAt.copy(configCameraController.dragLookAt);
+        configPerspectiveCamera.position.copy(configCameraController.currentPosition);
+        configPerspectiveCamera.lookAt(configCameraController.currentLookAt);
+        updateOverlayLabelPosition(configCellLabel);
+        updateOverlayLabelPosition(configShardLabel);
+        updateOverlayLabelPosition(configHoverLabel);
+        return;
+      }
+      clearConfigHover();
+      return;
+    }
 
     let hitObject = null;
     if (activeState === orthogonal3dState) {
@@ -2747,12 +2903,15 @@ tailwind.config = {
     const angle = elapsed * orthogonal3dState.orbitSpeed;
     const verticalBase = orthogonal3dState.orbitHeight * 0.55;
     const verticalAmplitude = orthogonal3dState.orbitHeight * 0.63;
-    configPerspectiveCamera.position.set(
-      Math.cos(angle) * orthogonal3dState.orbitRadius,
-      verticalBase + Math.sin(angle * 2.35 + 0.45) * verticalAmplitude,
-      Math.sin(angle) * orthogonal3dState.orbitRadius * 0.82
+    applyConfigPerspectiveOrbit(
+      new THREE.Vector3(
+        Math.cos(angle) * orthogonal3dState.orbitRadius,
+        verticalBase + Math.sin(angle * 2.35 + 0.45) * verticalAmplitude,
+        Math.sin(angle) * orthogonal3dState.orbitRadius * 0.82
+      ),
+      new THREE.Vector3(0, orthogonal3dState.cubeHeight * 0.95, 0),
+      time
     );
-    configPerspectiveCamera.lookAt(0, orthogonal3dState.cubeHeight * 0.95, 0);
   }
 
   function startOrthogonal3dGrowth() {
@@ -3427,12 +3586,15 @@ tailwind.config = {
   function updateAreasCameraOrbit(time) {
     if (!areasState || configActiveCamera !== configPerspectiveCamera) return;
     const angle = time * areasState.orbitSpeed;
-    configPerspectiveCamera.position.set(
-      Math.cos(angle) * areasState.orbitRadius,
-      areasState.orbitHeight,
-      Math.sin(angle) * areasState.orbitRadius * 0.82
+    applyConfigPerspectiveOrbit(
+      new THREE.Vector3(
+        Math.cos(angle) * areasState.orbitRadius,
+        areasState.orbitHeight,
+        Math.sin(angle) * areasState.orbitRadius * 0.82
+      ),
+      new THREE.Vector3(0, 0, 0),
+      time
     );
-    configPerspectiveCamera.lookAt(0, 0, 0);
   }
 
   function prepareAreasConfiguration(autoStart) {
@@ -4511,12 +4673,15 @@ tailwind.config = {
   function updateHexagonalCameraOrbit(time) {
     if (!hexagonalState || configActiveCamera !== configPerspectiveCamera) return;
     const angle = time * hexagonalState.orbitSpeed;
-    configPerspectiveCamera.position.set(
-      Math.cos(angle) * hexagonalState.orbitRadius,
-      hexagonalState.orbitHeight,
-      Math.sin(angle) * hexagonalState.orbitRadius * 0.82
+    applyConfigPerspectiveOrbit(
+      new THREE.Vector3(
+        Math.cos(angle) * hexagonalState.orbitRadius,
+        hexagonalState.orbitHeight,
+        Math.sin(angle) * hexagonalState.orbitRadius * 0.82
+      ),
+      new THREE.Vector3(0, 0, 0),
+      time
     );
-    configPerspectiveCamera.lookAt(0, 0, 0);
   }
 
   function startHexagonalGrowth() {
@@ -5252,12 +5417,15 @@ tailwind.config = {
     const angle = elapsed * hexagonalStackedState.orbitSpeed;
     const verticalBase = hexagonalStackedState.orbitHeight * 0.55;
     const verticalAmplitude = hexagonalStackedState.orbitHeight * 0.63;
-    configPerspectiveCamera.position.set(
-      Math.cos(angle) * hexagonalStackedState.orbitRadius,
-      verticalBase + Math.sin(angle * 2.35 + 0.45) * verticalAmplitude,
-      Math.sin(angle) * hexagonalStackedState.orbitRadius * 0.82
+    applyConfigPerspectiveOrbit(
+      new THREE.Vector3(
+        Math.cos(angle) * hexagonalStackedState.orbitRadius,
+        verticalBase + Math.sin(angle * 2.35 + 0.45) * verticalAmplitude,
+        Math.sin(angle) * hexagonalStackedState.orbitRadius * 0.82
+      ),
+      new THREE.Vector3(0, hexagonalStackedState.prismHeight * 0.95, 0),
+      time
     );
-    configPerspectiveCamera.lookAt(0, hexagonalStackedState.prismHeight * 0.95, 0);
   }
 
   function startHexagonalStackedGrowth() {
@@ -6003,12 +6171,15 @@ tailwind.config = {
     const angle = elapsed * hexagonalOffsetState.orbitSpeed;
     const verticalBase = hexagonalOffsetState.orbitHeight * 0.55;
     const verticalAmplitude = hexagonalOffsetState.orbitHeight * 0.63;
-    configPerspectiveCamera.position.set(
-      Math.cos(angle) * hexagonalOffsetState.orbitRadius,
-      verticalBase + Math.sin(angle * 2.35 + 0.45) * verticalAmplitude,
-      Math.sin(angle) * hexagonalOffsetState.orbitRadius * 0.82
+    applyConfigPerspectiveOrbit(
+      new THREE.Vector3(
+        Math.cos(angle) * hexagonalOffsetState.orbitRadius,
+        verticalBase + Math.sin(angle * 2.35 + 0.45) * verticalAmplitude,
+        Math.sin(angle) * hexagonalOffsetState.orbitRadius * 0.82
+      ),
+      new THREE.Vector3(hexagonalOffsetState.topOffsetX * 0.5, hexagonalOffsetState.prismHeight * 0.95, hexagonalOffsetState.topOffsetZ * 0.5),
+      time
     );
-    configPerspectiveCamera.lookAt(hexagonalOffsetState.topOffsetX * 0.5, hexagonalOffsetState.prismHeight * 0.95, hexagonalOffsetState.topOffsetZ * 0.5);
   }
 
   function startHexagonalOffsetGrowth() {
@@ -6352,12 +6523,15 @@ tailwind.config = {
     if (!rhombicDodecahedronState) return;
     const elapsed = time - rhombicDodecahedronState.startedAt;
     const angle = elapsed * rhombicDodecahedronState.orbitSpeed;
-    configPerspectiveCamera.position.set(
-      Math.cos(angle) * rhombicDodecahedronState.orbitRadius,
-      rhombicDodecahedronState.orbitHeight + Math.sin(angle * 1.7 + 0.35) * (rhombicDodecahedronState.orbitRadius * 0.08),
-      Math.sin(angle) * rhombicDodecahedronState.orbitRadius * 0.82
+    applyConfigPerspectiveOrbit(
+      new THREE.Vector3(
+        Math.cos(angle) * rhombicDodecahedronState.orbitRadius,
+        rhombicDodecahedronState.orbitHeight + Math.sin(angle * 1.7 + 0.35) * (rhombicDodecahedronState.orbitRadius * 0.08),
+        Math.sin(angle) * rhombicDodecahedronState.orbitRadius * 0.82
+      ),
+      rhombicDodecahedronState.lookAt,
+      time
     );
-    configPerspectiveCamera.lookAt(rhombicDodecahedronState.lookAt);
     updateOverlayLabelPosition(configCellLabel);
     updateOverlayLabelPosition(configHoverLabel);
   }
@@ -6877,12 +7051,15 @@ tailwind.config = {
     const angle = elapsed * arbitraryConnectivityState.orbitSpeed;
     const verticalBase = arbitraryConnectivityState.orbitHeight * 0.55;
     const verticalAmplitude = arbitraryConnectivityState.orbitHeight * 0.4;
-    configPerspectiveCamera.position.set(
-      Math.cos(angle) * arbitraryConnectivityState.orbitRadius,
-      verticalBase + Math.sin(angle * 2.1 + 0.35) * verticalAmplitude,
-      Math.sin(angle) * arbitraryConnectivityState.orbitRadius * 0.82
+    applyConfigPerspectiveOrbit(
+      new THREE.Vector3(
+        Math.cos(angle) * arbitraryConnectivityState.orbitRadius,
+        verticalBase + Math.sin(angle * 2.1 + 0.35) * verticalAmplitude,
+        Math.sin(angle) * arbitraryConnectivityState.orbitRadius * 0.82
+      ),
+      new THREE.Vector3(0, 0.35, 0),
+      time
     );
-    configPerspectiveCamera.lookAt(0, 0.35, 0);
   }
 
   function startArbitraryConnectivityGrowth() {
