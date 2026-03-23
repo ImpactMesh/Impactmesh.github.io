@@ -2424,8 +2424,11 @@ tailwind.config = {
     const topIndexes = new Set();
     const bottomIndexes = new Set();
     if (orthogonal3dState.seedIndex !== null) {
-      topIndexes.add(orthogonal3dState.seedIndex);
-      bottomIndexes.add(orthogonal3dState.seedIndex);
+      const allowSeedStacks = orthogonal3dState.alive.size > 1;
+      if (allowSeedStacks) {
+        topIndexes.add(orthogonal3dState.seedIndex);
+        bottomIndexes.add(orthogonal3dState.seedIndex);
+      }
 
       orthogonal3dState.regions.forEach((region) => {
         const members = getOrthogonal3dRegionMembers(region).filter((index) => index !== orthogonal3dState.seedIndex);
