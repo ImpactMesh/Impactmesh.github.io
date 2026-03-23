@@ -955,7 +955,7 @@ tailwind.config = {
     '3d-hexagonal-stacked': '3D hexagonal stacked grids preserve the standard six-neighbor hex pattern within each layer and add one vertical connection above and one below. This keeps horizontal adjacency predictable while introducing a simple layered structure for three-dimensional simulation.',
     '3d-hexagonal-offset': '3D hexagonal offset grids shift successive layers so a cell aligns with three neighbors above and three below instead of a single vertical column. This produces denser cross-layer connectivity and a more uniform treatment of vertical transitions and spatial diagonals.',
     'arbitrary-connectivity': 'N-dimensional arbitrary connectivity lets a game define any adjacency structure it needs, whether spatial, systemic, social, or entirely abstract. It is useful when space is not the main organizing structure and progression, interaction, routing, or influence are driven by rules, relationships, or state transitions instead of geometric proximity.',
-    'rhombic-dodecahedron': 'Rhombic dodecahedra tile 3D space exactly with no gaps or overlaps, making them a true space-filling polyhedral packing. In this packing, each cell has 12 face-adjacent neighbors, giving a denser and more isotropic local neighborhood than a cubic grid.'
+    'rhombic-dodecahedron': 'Rhombic dodecahedron packing gives each cell 12 equally near neighboring cells in a more uniform 3D arrangement than cubes. Compared with the layered 3D hex offset model, it behaves more like a fully isotropic 3D neighborhood instead of a stack of shifted 2D layers.'
   };
 
   function getConfigDisplayName(mode) {
