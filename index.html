@@ -826,7 +826,7 @@ tailwind.config = {
                   </svg>
                 </div>
               </div>
-              <div class="absolute left-1/2 top-1/2 w-[min(32rem,calc(100%-3rem))] -translate-x-1/2 -translate-y-1/2 border border-primary/22 bg-black/74 px-6 py-5 text-center">
+              <div id="config-selection-notice" class="absolute left-1/2 top-1/2 w-[min(32rem,calc(100%-3rem))] -translate-x-1/2 -translate-y-1/2 border border-primary/22 bg-black/74 px-6 py-5 text-center">
                 <div class="text-2xl md:text-3xl text-tertiary tracking-[0.18em] font-mono yellow-bloom">SELECT A SPATIAL STRUCTURE</div>
                 <div class="mt-4 text-xs md:text-sm text-primary/70 tracking-[0.12em] font-mono uppercase">Click one of the configurations in the left rail to inspect its geometry.</div>
               </div>
@@ -994,9 +994,11 @@ tailwind.config = {
 
     const panel = document.getElementById('config-explainer-panel');
     const title = document.getElementById('config-explainer-title');
+    const selectionNotice = document.getElementById('config-selection-notice');
     const fullText = getConfigExplainerText(mode);
     configExplainer.textContent = '';
     if (title) title.textContent = getConfigDisplayName(mode);
+    if (selectionNotice) selectionNotice.classList.add('hidden');
     if (panel) panel.classList.toggle('hidden', !fullText);
     updateConfigTopviewPanel(mode);
     if (!fullText) return;
@@ -1247,6 +1249,7 @@ tailwind.config = {
     if (configExplainer) configExplainer.textContent = '';
     const explainerTitle = document.getElementById('config-explainer-title');
     if (explainerTitle) explainerTitle.textContent = 'SPATIAL MODEL';
+    document.getElementById('config-selection-notice')?.classList.remove('hidden');
     document.getElementById('config-explainer-panel')?.classList.add('hidden');
     document.getElementById('config-topview-panel')?.classList.add('hidden');
   }
