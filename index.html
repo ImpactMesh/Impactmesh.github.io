@@ -728,6 +728,35 @@ tailwind.config = {
                 <div class="text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">SPATIAL MODEL</div>
                 <p id="config-explainer" class="mt-2 min-h-[4.75rem] text-[13px] leading-6 text-[#d8c4a2] tracking-[0.02em]"></p>
               </div>
+              <div id="config-topview-panel" class="hidden absolute top-[10.2rem] left-4 w-[16rem] border border-primary/20 bg-black/72 px-3 py-3">
+                <div class="text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">ORTHOGRAPHIC TOP VIEW</div>
+                <div class="mt-2 border border-primary/15 bg-[#060606] p-2">
+                  <svg viewBox="0 0 160 112" class="block w-full h-auto" aria-hidden="true">
+                    <g fill="none" stroke="#ff6600" stroke-opacity="0.16" stroke-width="1.2">
+                      <path d="M38 18 L50 25 L50 39 L38 46 L26 39 L26 25 Z"/>
+                      <path d="M62 18 L74 25 L74 39 L62 46 L50 39 L50 25 Z"/>
+                      <path d="M86 18 L98 25 L98 39 L86 46 L74 39 L74 25 Z"/>
+                      <path d="M50 39 L62 46 L62 60 L50 67 L38 60 L38 46 Z"/>
+                      <path d="M74 39 L86 46 L86 60 L74 67 L62 60 L62 46 Z"/>
+                      <path d="M98 39 L110 46 L110 60 L98 67 L86 60 L86 46 Z"/>
+                      <path d="M62 60 L74 67 L74 81 L62 88 L50 81 L50 67 Z"/>
+                      <path d="M86 60 L98 67 L98 81 L86 88 L74 81 L74 67 Z"/>
+                    </g>
+                    <g fill="#d97a32" fill-opacity="0.48" stroke="#ffe2c8" stroke-opacity="0.34" stroke-width="1.1">
+                      <path d="M62 18 L74 25 L74 39 L62 46 L50 39 L50 25 Z"/>
+                      <path d="M50 39 L62 46 L62 60 L50 67 L38 60 L38 46 Z"/>
+                      <path d="M74 39 L86 46 L86 60 L74 67 L62 60 L62 46 Z"/>
+                      <path d="M98 39 L110 46 L110 60 L98 67 L86 60 L86 46 Z"/>
+                      <path d="M62 60 L74 67 L74 81 L62 88 L50 81 L50 67 Z"/>
+                    </g>
+                    <g fill="#cfe8c5" fill-opacity="0.52" stroke="#f8fdf4" stroke-opacity="0.62" stroke-width="1">
+                      <path d="M74 39 L86 46 L86 60 L74 67 L62 60 L62 46 Z"/>
+                      <path d="M98 39 L110 46 L110 60 L98 67 L86 60 L86 46 Z"/>
+                      <path d="M62 60 L74 67 L74 81 L62 88 L50 81 L50 67 Z"/>
+                    </g>
+                  </svg>
+                </div>
+              </div>
               <div id="config-stage-caption" class="absolute bottom-4 left-4 text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">2D TOP VIEW // STANDBY</div>
               <div id="config-cell-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-primary/40 bg-black/70 px-3 py-2 text-[10px] text-primary tracking-[0.28em] font-bold electric-bloom">STEM CELL</div>
               <div id="config-shard-label" class="hidden absolute -translate-x-1/2 -translate-y-[115%] border border-tertiary/40 bg-black/70 px-3 py-2 text-[10px] text-tertiary tracking-[0.28em] font-bold yellow-bloom">SHARD CELLS</div>
@@ -822,6 +851,12 @@ tailwind.config = {
     return CONFIG_EXPLAINER_TEXT[mode] || '';
   }
 
+  function updateConfigTopviewPanel(mode) {
+    const panel = document.getElementById('config-topview-panel');
+    if (!panel) return;
+    panel.classList.toggle('hidden', mode !== '3d-hexagonal-stacked');
+  }
+
   function startConfigExplainerTyping(mode) {
     if (!configExplainer) return;
     clearTimeout(configExplainerTypingTimeout);
@@ -830,6 +865,7 @@ tailwind.config = {
     const fullText = getConfigExplainerText(mode);
     configExplainer.textContent = '';
     if (panel) panel.classList.toggle('hidden', !fullText);
+    updateConfigTopviewPanel(mode);
     if (!fullText) return;
 
     let index = 0;
@@ -1010,6 +1046,7 @@ tailwind.config = {
     if (configStageCaption) configStageCaption.textContent = '';
     if (configExplainer) configExplainer.textContent = '';
     document.getElementById('config-explainer-panel')?.classList.add('hidden');
+    document.getElementById('config-topview-panel')?.classList.add('hidden');
   }
 
   function setConfigButtonState(mode) {
