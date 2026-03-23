@@ -1491,6 +1491,9 @@ tailwind.config = {
     if (activeState === orthogonal3dState) {
       return activeState.cells.flatMap((cell) => [cell.mesh, cell.topMesh, cell.bottomMesh].filter(Boolean));
     }
+    if (activeState === hexagonalStackedState) {
+      return activeState.cells.flatMap((cell) => [cell.mesh, cell.topMesh].filter(Boolean));
+    }
     return activeState.cells.map((cell) => cell.mesh);
   }
 
@@ -1574,7 +1577,7 @@ tailwind.config = {
 
   function formatConfigHoverLabel(activeState, cellIndex, cell, hitObject) {
     const labelPrefix = cellIndex === activeState.seedIndex ? 'STEM' : 'SHARD';
-    if (activeState === orthogonal3dState) {
+    if (activeState === orthogonal3dState || activeState === hexagonalStackedState) {
       const layerKey = hitObject?.userData?.stackLayer || 'middle';
       const layer = layerKey === 'top' ? 'LAYER +1' : layerKey === 'bottom' ? 'LAYER -1' : 'LAYER 0';
       return `${labelPrefix} ID: ${cell.cellId} (${layer})`;
@@ -4376,10 +4379,13 @@ tailwind.config = {
 
   function getHexagonalStackedLabelPosition(cell) {
     if (!hexagonalStackedState || !cell?.mesh) return cell?.mesh?.position || new THREE.Vector3();
+    const anchorMesh = cell.state === 'stem-bright' || cell.state === 'stem-dim'
+      ? cell.mesh
+      : (cell.hasTop ? cell.topMesh : cell.mesh);
     return new THREE.Vector3(
-      cell.mesh.position.x,
-      cell.mesh.position.y + hexagonalStackedState.prismHeight * 0.56,
-      cell.mesh.position.z
+      anchorMesh.position.x,
+      anchorMesh.position.y + hexagonalStackedState.prismHeight * 0.56,
+      anchorMesh.position.z
     );
   }
 
@@ -4475,6 +4481,7 @@ tailwind.config = {
       const mesh = new THREE.Mesh(cellGeometry, material);
       mesh.position.set(x, 0, z);
       mesh.userData.cellIndex = cells.length;
+      mesh.userData.stackLayer = 'middle';
       mesh.renderOrder = 1;
       group.add(mesh);
 
@@ -4488,6 +4495,31 @@ tailwind.config = {
       edges.renderOrder = 2;
       group.add(edges);
 
+      const topMaterial = new THREE.MeshBasicMaterial({
+        color: 0x241108,
+        transparent: true,
+        opacity: 0.24,
+        side: THREE.DoubleSide
+      });
+      const topMesh = new THREE.Mesh(cellGeometry, topMaterial);
+      topMesh.position.set(x, prismHeight, z);
+      topMesh.userData.cellIndex = cells.length;
+      topMesh.userData.stackLayer = 'top';
+      topMesh.renderOrder = 3;
+      topMesh.visible = false;
+      group.add(topMesh);
+
+      const topEdgeMaterial = new THREE.LineBasicMaterial({
+        color: 0x6a3212,
+        transparent: true,
+        opacity: 0.18
+      });
+      const topEdges = new THREE.LineSegments(cellEdgeGeometry, topEdgeMaterial);
+      topEdges.position.copy(topMesh.position);
+      topEdges.renderOrder = 4;
+      topEdges.visible = false;
+      group.add(topEdges);
+
       const corners = extractHexMeshCorners(mesh);
       cells.push({
         row,
@@ -4498,6 +4530,11 @@ tailwind.config = {
         edges,
         material,
         edgeMaterial,
+        topMesh,
+        topEdges,
+        topMaterial,
+        topEdgeMaterial,
+        hasTop: false,
         corners,
         cellId: makeConfigCellId(row, col),
         state: 'dead',
@@ -4600,11 +4637,18 @@ tailwind.config = {
       cell.state = 'dead';
       cell.baseOpacity = 0.24;
       cell.edgeBaseOpacity = 0.18;
+      cell.hasTop = false;
       cell.material.color.setHex(0x241108);
       cell.material.opacity = cell.baseOpacity;
       cell.edgeMaterial.color.setHex(0x6a3212);
       cell.edgeMaterial.opacity = cell.edgeBaseOpacity;
+      cell.topMaterial.color.setHex(0x241108);
+      cell.topMaterial.opacity = 0.24;
+      cell.topEdgeMaterial.color.setHex(0x6a3212);
+      cell.topEdgeMaterial.opacity = 0.18;
       cell.edges.visible = true;
+      cell.topMesh.visible = false;
+      cell.topEdges.visible = false;
     });
   }
 
@@ -4615,50 +4659,115 @@ tailwind.config = {
 
     cell.state = state;
 
-    if (state === 'dead') {
-      cell.baseOpacity = 0.24;
-      cell.edgeBaseOpacity = 0.18;
-      cell.material.color.setHex(0x241108);
-      cell.material.opacity = cell.baseOpacity;
-      cell.edgeMaterial.color.setHex(0x6a3212);
-      cell.edgeMaterial.opacity = cell.edgeBaseOpacity;
-      return;
-    }
+    const middleStyle = {
+      fillColor: 0x241108,
+      opacity: 0.24,
+      edgeColor: 0x6a3212,
+      edgeOpacity: 0.18
+    };
+    const topStyle = {
+      fillColor: 0x241108,
+      opacity: 0.24,
+      edgeColor: 0x6a3212,
+      edgeOpacity: 0.18
+    };
+
     if (state === 'stem-bright') {
-      cell.baseOpacity = 0.96;
-      cell.edgeBaseOpacity = 0.82;
-      cell.material.color.setHex(0xff6600);
-      cell.material.opacity = cell.baseOpacity;
-      cell.edgeMaterial.color.setHex(0xfff1dc);
-      cell.edgeMaterial.opacity = cell.edgeBaseOpacity;
-      return;
+      middleStyle.fillColor = 0xff6600;
+      middleStyle.opacity = 0.96;
+      middleStyle.edgeColor = 0xfff1dc;
+      middleStyle.edgeOpacity = 0.82;
+
+      topStyle.fillColor = 0x4fa8ff;
+      topStyle.opacity = 0.8;
+      topStyle.edgeColor = 0xe8f5ff;
+      topStyle.edgeOpacity = 0.72;
+    } else if (state === 'stem-dim') {
+      middleStyle.fillColor = 0x4d1b05;
+      middleStyle.opacity = 0.28;
+      middleStyle.edgeColor = 0x8a3a12;
+      middleStyle.edgeOpacity = 0.24;
+
+      topStyle.fillColor = 0x4fa8ff;
+      topStyle.opacity = 0.8;
+      topStyle.edgeColor = 0xe8f5ff;
+      topStyle.edgeOpacity = 0.72;
+    } else if (state === 'core') {
+      middleStyle.fillColor = 0xd97a32;
+      middleStyle.opacity = 0.72;
+      middleStyle.edgeColor = 0xffe2c8;
+      middleStyle.edgeOpacity = 0.46;
+
+      topStyle.fillColor = 0x4fa8ff;
+      topStyle.opacity = 0.74;
+      topStyle.edgeColor = 0xe8f5ff;
+      topStyle.edgeOpacity = 0.5;
+    } else if (state === 'frontier') {
+      middleStyle.fillColor = 0xf0a45a;
+      middleStyle.opacity = 0.82;
+      middleStyle.edgeColor = 0xffecd7;
+      middleStyle.edgeOpacity = 0.58;
+
+      topStyle.fillColor = 0x7ec2ff;
+      topStyle.opacity = 0.84;
+      topStyle.edgeColor = 0xf2f9ff;
+      topStyle.edgeOpacity = 0.62;
     }
-    if (state === 'stem-dim') {
-      cell.baseOpacity = 0.28;
-      cell.edgeBaseOpacity = 0.24;
-      cell.material.color.setHex(0x4d1b05);
-      cell.material.opacity = cell.baseOpacity;
-      cell.edgeMaterial.color.setHex(0x8a3a12);
-      cell.edgeMaterial.opacity = cell.edgeBaseOpacity;
-      return;
+
+    cell.baseOpacity = middleStyle.opacity;
+    cell.edgeBaseOpacity = middleStyle.edgeOpacity;
+    cell.material.color.setHex(middleStyle.fillColor);
+    cell.material.opacity = middleStyle.opacity;
+    cell.edgeMaterial.color.setHex(middleStyle.edgeColor);
+    cell.edgeMaterial.opacity = middleStyle.edgeOpacity;
+
+    cell.topMaterial.color.setHex(topStyle.fillColor);
+    cell.topMaterial.opacity = topStyle.opacity;
+    cell.topEdgeMaterial.color.setHex(topStyle.edgeColor);
+    cell.topEdgeMaterial.opacity = topStyle.edgeOpacity;
+  }
+
+  function updateHexagonalStackedTopVisibility() {
+    if (!hexagonalStackedState) return;
+
+    const topIndexes = new Set();
+    if (hexagonalStackedState.seedIndex !== null) {
+      topIndexes.add(hexagonalStackedState.seedIndex);
+
+      hexagonalStackedState.regions.forEach((region) => {
+        const members = getHexagonalStackedRegionMembers(region).filter((index) => index !== hexagonalStackedState.seedIndex);
+        if (!members.length) return;
+
+        const centroid = members.reduce((acc, index) => {
+          const cell = hexagonalStackedState.cells[index];
+          acc.x += cell.mesh.position.x;
+          acc.z += cell.mesh.position.z;
+          return acc;
+        }, { x: 0, z: 0 });
+        centroid.x /= members.length;
+        centroid.z /= members.length;
+
+        const topCount = Math.max(1, Math.round(members.length * 0.28));
+        const topRanked = members
+          .map((index) => {
+            const cell = hexagonalStackedState.cells[index];
+            const localDistance = Math.hypot(cell.mesh.position.x - centroid.x, cell.mesh.position.z - centroid.z);
+            const hash = Math.sin((cell.row + 1.2) * 1.33 + (cell.col + 0.5) * 0.91 + region.index * 1.7) * 0.22;
+            return { index, score: localDistance * 0.82 + hash };
+          })
+          .sort((a, b) => a.score - b.score)
+          .slice(0, topCount);
+
+        topRanked.forEach(({ index }) => topIndexes.add(index));
+      });
     }
-    if (state === 'core') {
-      cell.baseOpacity = 0.72;
-      cell.edgeBaseOpacity = 0.46;
-      cell.material.color.setHex(0xd97a32);
-      cell.material.opacity = cell.baseOpacity;
-      cell.edgeMaterial.color.setHex(0xffe2c8);
-      cell.edgeMaterial.opacity = cell.edgeBaseOpacity;
-      return;
-    }
-    if (state === 'frontier') {
-      cell.baseOpacity = 0.82;
-      cell.edgeBaseOpacity = 0.58;
-      cell.material.color.setHex(0xf0a45a);
-      cell.material.opacity = cell.baseOpacity;
-      cell.edgeMaterial.color.setHex(0xffecd7);
-      cell.edgeMaterial.opacity = cell.edgeBaseOpacity;
-    }
+
+    hexagonalStackedState.cells.forEach((cell, index) => {
+      const alive = hexagonalStackedState.alive.has(index);
+      cell.hasTop = alive && topIndexes.has(index);
+      cell.topMesh.visible = cell.hasTop;
+      cell.topEdges.visible = cell.hasTop;
+    });
   }
 
   function getHexagonalStackedNeighbors(index) {
@@ -4829,13 +4938,16 @@ tailwind.config = {
 
   function updateHexagonalStackedCameraOrbit(time) {
     if (!hexagonalStackedState || configActiveCamera !== configPerspectiveCamera) return;
-    const angle = time * hexagonalStackedState.orbitSpeed;
+    const elapsed = Math.max(0, time - hexagonalStackedState.startedAt);
+    const angle = elapsed * hexagonalStackedState.orbitSpeed;
+    const verticalBase = hexagonalStackedState.orbitHeight * 0.55;
+    const verticalAmplitude = hexagonalStackedState.orbitHeight * 0.63;
     configPerspectiveCamera.position.set(
       Math.cos(angle) * hexagonalStackedState.orbitRadius,
-      hexagonalStackedState.orbitHeight,
+      verticalBase + Math.sin(angle * 2.35 + 0.45) * verticalAmplitude,
       Math.sin(angle) * hexagonalStackedState.orbitRadius * 0.82
     );
-    configPerspectiveCamera.lookAt(0, hexagonalStackedState.prismHeight * 0.52, 0);
+    configPerspectiveCamera.lookAt(0, hexagonalStackedState.prismHeight * 0.95, 0);
   }
 
   function startHexagonalStackedGrowth() {
@@ -4871,6 +4983,7 @@ tailwind.config = {
     hexagonalStackedState.growthStep = 0;
 
     setHexagonalStackedCellState(seedIndex, 'stem-bright');
+    updateHexagonalStackedTopVisibility();
     styleOverlayTag(configCellLabel, 0xff6600);
     styleOverlayTag(configShardLabel, 0xffa347);
     showOverlayLabel(configCellLabel, 'STEM CELL', getHexagonalStackedLabelPosition(seedCell));
@@ -4951,6 +5064,7 @@ tailwind.config = {
 
     hexagonalStackedState.latest = nextFrontier;
     hexagonalStackedState.growthStep += 1;
+    updateHexagonalStackedTopVisibility();
     updateHexagonalStackedShardLabel();
     updateHexagonalStackedRegions();
     configStageCaption.textContent = `HEXAGONAL STACKED // GROWTH WAVE ${String(hexagonalStackedState.growthStep).padStart(2, '0')}`;
