@@ -4223,7 +4223,7 @@ tailwind.config = {
     return points;
   }
 
-  function buildHexPolylineStripGeometry(points, closed, width, extrudeHeight = 0) {
+  function buildHexPolylineStripGeometry(points, closed, width) {
     const pointCount = points.length;
     if (pointCount < 2) return null;
     const halfWidth = width * 0.5;
@@ -4268,53 +4268,19 @@ tailwind.config = {
 
     const positions = [];
     const indices = [];
+    leftPoints.forEach((point, index) => {
+      positions.push(point.x, 0, point.z);
+      positions.push(rightPoints[index].x, 0, rightPoints[index].z);
+    });
+
     const segmentCount = closed ? pointCount : pointCount - 1;
-
-    if (extrudeHeight <= 0) {
-      leftPoints.forEach((point, index) => {
-        positions.push(point.x, 0, point.z);
-        positions.push(rightPoints[index].x, 0, rightPoints[index].z);
-      });
-
-      for (let i = 0; i < segmentCount; i += 1) {
-        const next = (i + 1) % pointCount;
-        const a = i * 2;
-        const b = a + 1;
-        const c = next * 2;
-        const d = c + 1;
-        indices.push(a, b, c, c, b, d);
-      }
-    } else {
-      leftPoints.forEach((point, index) => {
-        const rightPoint = rightPoints[index];
-        positions.push(point.x, extrudeHeight, point.z);      // top left
-        positions.push(rightPoint.x, extrudeHeight, rightPoint.z); // top right
-        positions.push(point.x, 0, point.z);                  // bottom left
-        positions.push(rightPoint.x, 0, rightPoint.z);        // bottom right
-      });
-
-      for (let i = 0; i < segmentCount; i += 1) {
-        const next = (i + 1) % pointCount;
-        const a = i * 4;
-        const b = a + 1;
-        const c = a + 2;
-        const d = a + 3;
-        const e = next * 4;
-        const f = e + 1;
-        const g = e + 2;
-        const h = e + 3;
-
-        indices.push(a, b, e, e, b, f); // top
-        indices.push(c, g, d, g, h, d); // bottom
-        indices.push(a, e, c, e, g, c); // outer left wall
-        indices.push(b, d, f, f, d, h); // outer right wall
-      }
-
-      if (!closed) {
-        indices.push(0, 2, 1, 1, 2, 3);
-        const last = (pointCount - 1) * 4;
-        indices.push(last, last + 1, last + 2, last + 1, last + 3, last + 2);
-      }
+    for (let i = 0; i < segmentCount; i += 1) {
+      const next = (i + 1) % pointCount;
+      const a = i * 2;
+      const b = a + 1;
+      const c = next * 2;
+      const d = c + 1;
+      indices.push(a, b, c, c, b, d);
     }
 
     const geometry = new THREE.BufferGeometry();
@@ -4331,18 +4297,16 @@ tailwind.config = {
     const opacity = options.opacity ?? 0.88;
     const color = options.color ?? 0xff6600;
     const lineThickness = options.lineThickness ?? 0.05;
-    const extrudeHeight = options.extrudeHeight ?? 0;
     if (!edgePaths.length) return { meshes: [], materials: [] };
 
     edgePaths.forEach((edgePath) => {
       const points = buildHexWorldPathPoints(edgePath.segments, edgePath.closed);
-      const geometry = buildHexPolylineStripGeometry(points, edgePath.closed, lineThickness, extrudeHeight);
+      const geometry = buildHexPolylineStripGeometry(points, edgePath.closed, lineThickness);
       if (!geometry) return;
       const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.y = lineHeight;
       mesh.userData.baseY = lineHeight;
-      mesh.userData.ribbonHeight = extrudeHeight;
       targetGroup.add(mesh);
       meshes.push(mesh);
       materials.push(material);
@@ -5098,8 +5062,7 @@ tailwind.config = {
       color: region.color,
       opacity: 0.88,
       lineHeight: region.lineHeight,
-      lineThickness: hexagonalStackedState.cellRadius * 0.13,
-      extrudeHeight: hexagonalStackedState.prismHeight * 0.5
+      lineThickness: hexagonalStackedState.cellRadius * 0.13
     });
     meshes.forEach((mesh) => {
       mesh.renderOrder = 12;
@@ -5850,8 +5813,7 @@ tailwind.config = {
       color: region.color,
       opacity: 0.88,
       lineHeight: region.lineHeight,
-      lineThickness: hexagonalOffsetState.cellRadius * 0.13,
-      extrudeHeight: hexagonalOffsetState.prismHeight * 0.5
+      lineThickness: hexagonalOffsetState.cellRadius * 0.13
     });
     meshes.forEach((mesh) => {
       mesh.renderOrder = 12;
