@@ -6569,7 +6569,7 @@ tailwind.config = {
     const bandWidth = arbitraryConnectivityState.nodeRadius * 0.72;
     const geometry = buildHexPolylineStripGeometry(points, true, bandWidth, ribbonHeight);
     if (!geometry) return [];
-    const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.34, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
+    const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: false, opacity: 1, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.y = baseY;
     mesh.userData.baseY = baseY;
@@ -6607,10 +6607,9 @@ tailwind.config = {
     if (!arbitraryConnectivityState?.regions?.length) return;
     arbitraryConnectivityState.regions.forEach((region, index) => {
       const wave = Math.sin(time * 1.76 + index * 1.05);
-      const pulse = 0.5 + wave * 0.5;
       const lift = wave * 0.04;
       region.pulseMaterials.forEach((material) => {
-        material.opacity = 0.12 + pulse * 0.26;
+        material.opacity = 1;
       });
       region.lines.forEach((mesh) => {
         if (mesh?.userData?.baseY !== undefined) mesh.position.y = mesh.userData.baseY + lift;
