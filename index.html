@@ -6263,12 +6263,12 @@ tailwind.config = {
     const sampleCoords = [
       [0, 0, 0],
       [1, 0, 0],
+      [1, 1, 0],
+      [1, 0, 1],
       [2, 0, 0],
       [2, 1, 0],
-      [3, 1, 0],
-      [3, 1, 1],
-      [4, 1, 1],
-      [4, 2, 1]
+      [2, 0, 1],
+      [2, 1, 1]
     ];
 
     sampleCoords.forEach(([i, j, k]) => {
@@ -6332,8 +6332,8 @@ tailwind.config = {
       alive,
       seedIndex,
       cellRadius,
-      orbitRadius: maxDistance * 8.6,
-      orbitHeight: maxDistance * 5.2,
+      orbitRadius: maxDistance * 6.9,
+      orbitHeight: maxDistance * 4.1,
       orbitSpeed: 0.22,
       startedAt: performance.now() * 0.001,
       lookAt: clusterCenter.clone()
