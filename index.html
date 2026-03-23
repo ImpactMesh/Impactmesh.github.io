@@ -4285,8 +4285,11 @@ tailwind.config = {
     return points;
   }
 
-  function buildHexPolylineStripGeometry(points, closed, width) {
-    const pointCount = points.length;
+  function buildHexPolylineStripGeometry(points, closed, width, extrudeHeight = 0) {
+    const sourcePoints = closed && points.length > 2 && Math.hypot(points[0].x - points[points.length - 1].x, points[0].z - points[points.length - 1].z) < 0.0001
+      ? points.slice(0, -1)
+      : points;
+    const pointCount = sourcePoints.length;
     if (pointCount < 2) return null;
     const halfWidth = width * 0.5;
     const leftPoints = [];
@@ -4302,9 +4305,9 @@ tailwind.config = {
     }
 
     for (let i = 0; i < pointCount; i += 1) {
-      const point = points[i];
-      const prevPoint = i === 0 ? (closed ? points[pointCount - 1] : points[i]) : points[i - 1];
-      const nextPoint = i === pointCount - 1 ? (closed ? points[0] : points[i]) : points[i + 1];
+      const point = sourcePoints[i];
+      const prevPoint = i === 0 ? (closed ? sourcePoints[pointCount - 1] : sourcePoints[i]) : sourcePoints[i - 1];
+      const nextPoint = i === pointCount - 1 ? (closed ? sourcePoints[0] : sourcePoints[i]) : sourcePoints[i + 1];
       const prevDir = normalize({ x: point.x - prevPoint.x, z: point.z - prevPoint.z });
       const nextDir = normalize({ x: nextPoint.x - point.x, z: nextPoint.z - point.z });
 
@@ -4330,19 +4333,52 @@ tailwind.config = {
 
     const positions = [];
     const indices = [];
-    leftPoints.forEach((point, index) => {
-      positions.push(point.x, 0, point.z);
-      positions.push(rightPoints[index].x, 0, rightPoints[index].z);
-    });
-
     const segmentCount = closed ? pointCount : pointCount - 1;
-    for (let i = 0; i < segmentCount; i += 1) {
-      const next = (i + 1) % pointCount;
-      const a = i * 2;
-      const b = a + 1;
-      const c = next * 2;
-      const d = c + 1;
-      indices.push(a, b, c, c, b, d);
+
+    if (extrudeHeight <= 0) {
+      leftPoints.forEach((point, index) => {
+        positions.push(point.x, 0, point.z);
+        positions.push(rightPoints[index].x, 0, rightPoints[index].z);
+      });
+
+      for (let i = 0; i < segmentCount; i += 1) {
+        const next = (i + 1) % pointCount;
+        const a = i * 2;
+        const b = a + 1;
+        const c = next * 2;
+        const d = c + 1;
+        indices.push(a, b, c, c, b, d);
+      }
+    } else {
+      leftPoints.forEach((point, index) => {
+        const rightPoint = rightPoints[index];
+        positions.push(point.x, extrudeHeight, point.z);
+        positions.push(rightPoint.x, extrudeHeight, rightPoint.z);
+        positions.push(point.x, 0, point.z);
+        positions.push(rightPoint.x, 0, rightPoint.z);
+      });
+
+      for (let i = 0; i < segmentCount; i += 1) {
+        const next = (i + 1) % pointCount;
+        const a = i * 4;
+        const b = a + 1;
+        const c = a + 2;
+        const d = a + 3;
+        const e = next * 4;
+        const f = e + 1;
+        const g = e + 2;
+        const h = e + 3;
+        indices.push(a, b, e, e, b, f);
+        indices.push(c, g, d, g, h, d);
+        indices.push(a, e, c, e, g, c);
+        indices.push(b, d, f, f, d, h);
+      }
+
+      if (!closed) {
+        indices.push(0, 2, 1, 1, 2, 3);
+        const last = (pointCount - 1) * 4;
+        indices.push(last, last + 1, last + 2, last + 1, last + 3, last + 2);
+      }
     }
 
     const geometry = new THREE.BufferGeometry();
@@ -6529,13 +6565,15 @@ tailwind.config = {
     const { points, baseY, ribbonHeight } = buildArbitraryConnectivityBlobLoop(memberIndexes);
     if (points.length < 2) return [];
 
-    const geometry = buildHexPolylineStripGeometry(points, true, arbitraryConnectivityState.nodeRadius * 1.4, ribbonHeight);
+    const bandWidth = arbitraryConnectivityState.nodeRadius * 0.72;
+    const geometry = buildHexPolylineStripGeometry(points, true, bandWidth, ribbonHeight);
     if (!geometry) return [];
     const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.34, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.y = baseY;
     mesh.userData.baseY = baseY;
     mesh.userData.ribbonHeight = ribbonHeight;
+    mesh.userData.bandWidth = bandWidth;
     mesh.renderOrder = 12;
     arbitraryConnectivityState.regionOverlayGroup.add(mesh);
     region.pulseMaterials.push(material);
