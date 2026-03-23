@@ -1811,6 +1811,11 @@ tailwind.config = {
   }
 
   function formatConfigHoverLabel(activeState, cellIndex, cell, hitObject) {
+    if (activeState === arbitraryConnectivityState) {
+      const labelPrefix = cellIndex === activeState.seedIndex ? 'STEM CELL' : 'CONNECTED CELL';
+      return `${labelPrefix} ID: ${cell.cellId}`;
+    }
+
     const labelPrefix = cellIndex === activeState.seedIndex ? 'STEM' : 'SHARD';
     if (activeState === orthogonal3dState || activeState === hexagonalStackedState || activeState === hexagonalOffsetState) {
       const layerKey = hitObject?.userData?.stackLayer || 'middle';
