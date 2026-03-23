@@ -6615,10 +6615,11 @@ tailwind.config = {
     if (!arbitraryConnectivityState?.regions?.length) return;
     arbitraryConnectivityState.regions.forEach((region, index) => {
       const wave = Math.sin(time * 1.76 + index * 1.05);
+      const pulse = 0.5 + wave * 0.5;
       const lift = wave * 0.04;
       region.pulseMaterials.forEach((material) => {
         material.transparent = true;
-        material.opacity = 1;
+        material.opacity = 0.72 + pulse * 0.28;
         material.depthTest = true;
         material.depthWrite = false;
       });
