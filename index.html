@@ -2526,6 +2526,7 @@ tailwind.config = {
     const meshes = [];
     const jointKeys = new Set();
     const lineThickness = orthogonal3dState.spacing * 0.072;
+    const ribbonHeight = orthogonal3dState.cubeHeight * 0.5;
 
     function pointKey(x, z) {
       return `${x.toFixed(4)},${z.toFixed(4)}`;
@@ -2537,11 +2538,12 @@ tailwind.config = {
         : `${pointKey(b.x, b.z)}|${pointKey(a.x, a.z)}`;
     }
 
-    function addSolidMesh(width, height, depth, x, z) {
-      const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.88, depthWrite: false });
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
-      mesh.position.set(x, region.lineHeight, z);
-      mesh.userData.baseY = region.lineHeight;
+    function addSolidMesh(width, depth, x, z) {
+      const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.52, depthWrite: false, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, ribbonHeight, depth), material);
+      mesh.position.set(x, region.lineHeight + ribbonHeight * 0.5, z);
+      mesh.userData.baseY = region.lineHeight + ribbonHeight * 0.5;
+      mesh.userData.ribbonHeight = ribbonHeight;
       orthogonal3dState.regionOverlayGroup.add(mesh);
       meshes.push(mesh);
       region.pulseMaterials.push(material);
@@ -2577,7 +2579,6 @@ tailwind.config = {
 
       addSolidMesh(
         horizontal ? length : lineThickness,
-        0.014,
         horizontal ? lineThickness : length,
         midX,
         midZ
@@ -2587,7 +2588,7 @@ tailwind.config = {
         const key = pointKey(point.x, point.z);
         if (jointKeys.has(key)) return;
         jointKeys.add(key);
-        addSolidMesh(lineThickness, 0.014, lineThickness, point.x, point.z);
+        addSolidMesh(lineThickness, lineThickness, point.x, point.z);
       });
     });
 
@@ -2637,7 +2638,7 @@ tailwind.config = {
       const lift = wave * 0.05;
 
       region.pulseMaterials.forEach((material) => {
-        material.opacity = 0.12 + pulse * 0.88;
+        material.opacity = 0.08 + pulse * 0.38;
       });
 
       region.lines.forEach((mesh) => {
@@ -5143,7 +5144,7 @@ tailwind.config = {
       const lift = wave * 0.05;
 
       region.pulseMaterials.forEach((material) => {
-        material.opacity = 0.12 + pulse * 0.88;
+        material.opacity = 0.08 + pulse * 0.38;
       });
 
       region.lines.forEach((mesh) => {
@@ -5895,7 +5896,7 @@ tailwind.config = {
       const lift = wave * 0.05;
 
       region.pulseMaterials.forEach((material) => {
-        material.opacity = 0.12 + pulse * 0.88;
+        material.opacity = 0.08 + pulse * 0.38;
       });
 
       region.lines.forEach((mesh) => {
