@@ -2305,10 +2305,11 @@ tailwind.config = {
     if (!orthogonal3dState || configActiveCamera !== configPerspectiveCamera) return;
     const elapsed = Math.max(0, time - orthogonal3dState.startedAt);
     const angle = elapsed * orthogonal3dState.orbitSpeed;
-    const verticalAmplitude = orthogonal3dState.orbitHeight + orthogonal3dState.cubeHeight * 1.5;
+    const verticalBase = orthogonal3dState.orbitHeight * 0.55;
+    const verticalAmplitude = orthogonal3dState.orbitHeight * 0.63;
     configPerspectiveCamera.position.set(
       Math.cos(angle) * orthogonal3dState.orbitRadius,
-      Math.sin(angle * 1.12 + 0.45) * verticalAmplitude,
+      verticalBase + Math.sin(angle * 2.35 + 0.45) * verticalAmplitude,
       Math.sin(angle) * orthogonal3dState.orbitRadius * 0.82
     );
     configPerspectiveCamera.lookAt(0, orthogonal3dState.cubeHeight * 0.95, 0);
