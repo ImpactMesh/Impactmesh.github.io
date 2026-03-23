@@ -712,22 +712,38 @@ tailwind.config = {
           <aside class="border border-primary/20 bg-black/35 p-4 md:p-5 flex flex-col">
             <div class="text-[10px] text-tertiary tracking-[0.35em] font-bold yellow-bloom">CONFIGURATION SET</div>
             <div class="text-primary/55 text-[10px] tracking-[0.24em] font-mono mt-2">SELECT A SPATIAL STRUCTURE</div>
-            <div class="mt-5 space-y-3">
-              <button id="config-btn-2d-orthogonal" type="button" class="w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom" onclick="selectConfigMode('2d-orthogonal')">2D ORTHOGONAL GRID</button>
-              <button id="config-btn-2d-hexagonal" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('2d-hexagonal')">2D HEXAGONAL GRID</button>
-              <button id="config-btn-2d-areas" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('2d-areas')">2D ARBITRARY POLYGONS</button>
-              <button id="config-btn-3d-orthogonal" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-orthogonal')">3D ORTHOGONAL GRID</button>
-              <button id="config-btn-3d-hexagonal-stacked" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-stacked')">3D HEXAGONAL STACKED</button>
-              <button id="config-btn-3d-hexagonal-offset" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-offset')">3D HEXAGONAL OFFSET</button>
-              <button id="config-btn-arbitrary-connectivity" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('arbitrary-connectivity')">ARBITRARY CONNECTIVITY</button>
-              <button id="config-btn-rhombic-dodecahedron" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('rhombic-dodecahedron')"><span class="block">RHOMBIC DODECAHEDRON</span><span class="block mt-1 text-[9px] tracking-[0.16em] opacity-70">(EXPERIMENTAL)</span></button>
+            <div class="mt-5 space-y-4">
+              <div>
+                <div class="flex items-center gap-3">
+                  <div class="text-[10px] text-tertiary tracking-[0.32em] font-bold yellow-bloom">2D</div>
+                  <div class="h-px flex-1 bg-primary/18"></div>
+                </div>
+                <div class="mt-3 space-y-3">
+                  <button id="config-btn-2d-orthogonal" type="button" class="w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom" onclick="selectConfigMode('2d-orthogonal')">2D ORTHOGONAL GRID</button>
+                  <button id="config-btn-2d-hexagonal" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('2d-hexagonal')">2D HEXAGONAL GRID</button>
+                  <button id="config-btn-2d-areas" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('2d-areas')">2D ARBITRARY POLYGONS</button>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center gap-3 pt-1">
+                  <div class="text-[10px] text-tertiary tracking-[0.32em] font-bold yellow-bloom">3D</div>
+                  <div class="h-px flex-1 bg-primary/18"></div>
+                </div>
+                <div class="mt-3 space-y-3">
+                  <button id="config-btn-3d-orthogonal" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-orthogonal')">3D ORTHOGONAL GRID</button>
+                  <button id="config-btn-3d-hexagonal-stacked" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-stacked')">3D HEXAGONAL STACKED</button>
+                  <button id="config-btn-3d-hexagonal-offset" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-offset')">3D HEXAGONAL OFFSET</button>
+                  <button id="config-btn-arbitrary-connectivity" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('arbitrary-connectivity')">ARBITRARY CONNECTIVITY</button>
+                  <button id="config-btn-rhombic-dodecahedron" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('rhombic-dodecahedron')"><span class="block">RHOMBIC DODECAHEDRON</span><span class="block mt-1 text-[9px] tracking-[0.16em] opacity-70">(EXPERIMENTAL)</span></button>
+                </div>
+              </div>
             </div>
           </aside>
           <div id="config-three-stage" class="relative h-full min-h-[28rem] border border-primary/20 bg-[#050505] overflow-hidden">
             <svg id="config-region-svg" class="pointer-events-none absolute inset-0 z-[6]" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
             <div class="pointer-events-none absolute inset-0 z-10">
               <div id="config-explainer-panel" class="hidden absolute top-4 left-4 max-w-[29rem] border border-primary/20 bg-black/72 px-4 py-3">
-                <div class="text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">SPATIAL MODEL</div>
+                <div id="config-explainer-title" class="text-[10px] text-tertiary tracking-[0.28em] font-mono yellow-bloom">SPATIAL MODEL</div>
                 <p id="config-explainer" class="mt-2 min-h-[4.75rem] text-[13px] leading-6 text-[#d8c4a2] tracking-[0.02em]"></p>
               </div>
               <div id="config-topview-panel" class="hidden absolute left-4 w-[16rem] border border-primary/20 bg-black/72 px-3 py-3" style="top: 13.25rem;">
@@ -917,6 +933,17 @@ tailwind.config = {
     'rhombic-dodecahedron': 'config-btn-rhombic-dodecahedron'
   };
 
+  const CONFIG_DISPLAY_NAMES = {
+    '2d-orthogonal': '2D ORTHOGONAL GRID',
+    '2d-hexagonal': '2D HEXAGONAL GRID',
+    '2d-areas': '2D ARBITRARY POLYGONS',
+    '3d-orthogonal': '3D ORTHOGONAL GRID',
+    '3d-hexagonal-stacked': '3D HEXAGONAL STACKED',
+    '3d-hexagonal-offset': '3D HEXAGONAL OFFSET',
+    'arbitrary-connectivity': 'ARBITRARY CONNECTIVITY',
+    'rhombic-dodecahedron': 'RHOMBIC DODECAHEDRON'
+  };
+
   const CONFIG_EXPLAINER_TEXT = {
     '2d-orthogonal': 'Orthogonal grids are common in games because movement, pathfinding and placement all snap cleanly to square cells. They are easy to read at a glance, but diagonal movement needs explicit rules if you want distance to feel fair.',
     '2d-hexagonal': 'Hex grids give each unit six evenly spaced directions, so adjacency and movement stay consistent without awkward diagonal shortcuts. They are especially good for tactical games where range, spacing and maneuver need to stay precise.',
@@ -927,6 +954,10 @@ tailwind.config = {
     'arbitrary-connectivity': 'N-dimensional arbitrary connectivity lets a game define any adjacency structure it needs, whether spatial, systemic, social, or entirely abstract. It is useful when space is not the main organizing structure and progression, interaction, routing, or influence are driven by rules, relationships, or state transitions instead of geometric proximity.',
     'rhombic-dodecahedron': 'Rhombic dodecahedra tile 3D space exactly with no gaps or overlaps, making them a true space-filling polyhedral packing. In this packing, each cell has 12 face-adjacent neighbors, giving a denser and more isotropic local neighborhood than a cubic grid.'
   };
+
+  function getConfigDisplayName(mode) {
+    return CONFIG_DISPLAY_NAMES[mode] || mode?.toUpperCase().replaceAll('-', ' ') || 'SPATIAL MODEL';
+  }
 
   function getConfigExplainerText(mode) {
     return CONFIG_EXPLAINER_TEXT[mode] || '';
@@ -959,8 +990,10 @@ tailwind.config = {
     clearTimeout(configExplainerTypingTimeout);
 
     const panel = document.getElementById('config-explainer-panel');
+    const title = document.getElementById('config-explainer-title');
     const fullText = getConfigExplainerText(mode);
     configExplainer.textContent = '';
+    if (title) title.textContent = getConfigDisplayName(mode);
     if (panel) panel.classList.toggle('hidden', !fullText);
     updateConfigTopviewPanel(mode);
     if (!fullText) return;
@@ -1209,6 +1242,8 @@ tailwind.config = {
     setConfigButtonState(null);
     if (configStageCaption) configStageCaption.textContent = '';
     if (configExplainer) configExplainer.textContent = '';
+    const explainerTitle = document.getElementById('config-explainer-title');
+    if (explainerTitle) explainerTitle.textContent = 'SPATIAL MODEL';
     document.getElementById('config-explainer-panel')?.classList.add('hidden');
     document.getElementById('config-topview-panel')?.classList.add('hidden');
   }
