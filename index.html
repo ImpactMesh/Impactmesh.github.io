@@ -4617,7 +4617,7 @@ tailwind.config = {
         side: THREE.DoubleSide
       });
       const topMesh = new THREE.Mesh(cellGeometry, topMaterial);
-      topMesh.position.set(x, prismHeight, z);
+      topMesh.position.set(x, prismHeight + 0.018, z);
       topMesh.userData.cellIndex = cells.length;
       topMesh.userData.stackLayer = 'top';
       topMesh.renderOrder = 3;
@@ -4715,6 +4715,8 @@ tailwind.config = {
       hexRadius,
       cellRadius,
       prismHeight,
+      topLift: 0.018,
+      topMembers: new Set(),
       cells,
       cellIndexByKey,
       neighborDirections,
@@ -4748,6 +4750,7 @@ tailwind.config = {
 
   function resetHexagonalStackedCells() {
     if (!hexagonalStackedState) return;
+    hexagonalStackedState.topMembers = new Set();
     hexagonalStackedState.cells.forEach((cell) => {
       cell.state = 'dead';
       cell.baseOpacity = 0.24;
@@ -4845,7 +4848,8 @@ tailwind.config = {
   function updateHexagonalStackedTopVisibility() {
     if (!hexagonalStackedState) return;
 
-    const topIndexes = new Set();
+    const topIndexes = hexagonalStackedState.topMembers || new Set();
+    hexagonalStackedState.topMembers = topIndexes;
     if (hexagonalStackedState.seedIndex !== null) {
       topIndexes.add(hexagonalStackedState.seedIndex);
 
@@ -5359,7 +5363,7 @@ tailwind.config = {
         side: THREE.DoubleSide
       });
       const topMesh = new THREE.Mesh(cellGeometry, topMaterial);
-      topMesh.position.set(x + topOffsetX, prismHeight, z + topOffsetZ);
+      topMesh.position.set(x + topOffsetX, prismHeight + 0.018, z + topOffsetZ);
       topMesh.userData.cellIndex = cells.length;
       topMesh.userData.stackLayer = 'top';
       topMesh.renderOrder = 3;
@@ -5457,6 +5461,8 @@ tailwind.config = {
       hexRadius,
       cellRadius,
       prismHeight,
+      topLift: 0.018,
+      topMembers: new Set(),
       topOffsetX,
       topOffsetZ,
       cells,
@@ -5492,6 +5498,7 @@ tailwind.config = {
 
   function resetHexagonalOffsetCells() {
     if (!hexagonalOffsetState) return;
+    hexagonalOffsetState.topMembers = new Set();
     hexagonalOffsetState.cells.forEach((cell) => {
       cell.state = 'dead';
       cell.baseOpacity = 0.24;
@@ -5589,7 +5596,8 @@ tailwind.config = {
   function updateHexagonalOffsetTopVisibility() {
     if (!hexagonalOffsetState) return;
 
-    const topIndexes = new Set();
+    const topIndexes = hexagonalOffsetState.topMembers || new Set();
+    hexagonalOffsetState.topMembers = topIndexes;
     if (hexagonalOffsetState.seedIndex !== null) {
       topIndexes.add(hexagonalOffsetState.seedIndex);
 
