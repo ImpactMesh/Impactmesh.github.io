@@ -1900,7 +1900,6 @@ tailwind.config = {
       growthStep: 0,
       orbitRadius: Math.max(boardWidth, boardHeight) * 0.86,
       orbitHeight: Math.max(boardWidth, boardHeight) * 0.72,
-      orbitHeightAmplitude: cubeHeight * 1.35,
       orbitSpeed: 0.12,
       maxAlive: 46
     };
@@ -2304,12 +2303,14 @@ tailwind.config = {
 
   function updateOrthogonal3dCameraOrbit(time) {
     if (!orthogonal3dState || configActiveCamera !== configPerspectiveCamera) return;
-    const angle = time * orthogonal3dState.orbitSpeed;
-    const verticalOffset = Math.sin(angle * 1.18 + 0.45) * orthogonal3dState.orbitHeightAmplitude;
+    const elapsed = Math.max(0, time - orthogonal3dState.startedAt);
+    const angle = elapsed * orthogonal3dState.orbitSpeed;
+    const sideOffset = -orthogonal3dState.orbitRadius * 0.9;
+    const zOffset = Math.cos(angle) * orthogonal3dState.orbitRadius * 0.82;
     configPerspectiveCamera.position.set(
-      Math.cos(angle) * orthogonal3dState.orbitRadius,
-      orthogonal3dState.orbitHeight + verticalOffset,
-      Math.sin(angle) * orthogonal3dState.orbitRadius * 0.82
+      sideOffset,
+      orthogonal3dState.orbitHeight,
+      zOffset
     );
     configPerspectiveCamera.lookAt(0, orthogonal3dState.cubeHeight * 0.95, 0);
   }
