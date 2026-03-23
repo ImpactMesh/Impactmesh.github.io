@@ -6263,17 +6263,19 @@ tailwind.config = {
     const sampleCoords = [
       [0, 0, 0],
       [1, 0, 0],
-      [0, 1, 0],
-      [0, 0, 1]
+      [2, 0, 0],
+      [2, 1, 0],
+      [3, 1, 0],
+      [3, 1, 1],
+      [4, 1, 1],
+      [4, 2, 1]
     ];
-    let maxDistance = 0;
 
     sampleCoords.forEach(([i, j, k]) => {
       const position = basisA.clone().multiplyScalar(i)
         .add(basisB.clone().multiplyScalar(j))
         .add(basisC.clone().multiplyScalar(k));
       const isSeed = i === 0 && j === 0 && k === 0;
-      const radial = Math.hypot(i, j, k);
       const material = new THREE.MeshBasicMaterial({
         color: isSeed ? 0xff6600 : 0xd97a32,
         transparent: true,
@@ -6309,16 +6311,17 @@ tailwind.config = {
       };
       cells.push(cell);
       alive.add(cell.index);
-      maxDistance = Math.max(maxDistance, position.length());
     });
 
+    const clusterCenter = cells.reduce((acc, cell) => acc.add(cell.mesh.position.clone()), new THREE.Vector3()).multiplyScalar(1 / cells.length);
+    const maxDistance = Math.max(...cells.map((cell) => cell.mesh.position.distanceTo(clusterCenter)));
     const seedIndex = 0;
     const base = new THREE.Mesh(
-      new THREE.CircleGeometry(maxDistance + cellRadius * 4.8, 72),
+      new THREE.CircleGeometry(maxDistance + cellRadius * 5.2, 72),
       new THREE.MeshBasicMaterial({ color: 0x090909, transparent: true, opacity: 0.9 })
     );
     base.rotation.x = -Math.PI / 2;
-    base.position.y = -(cellRadius * 3.4);
+    base.position.set(clusterCenter.x, -(cellRadius * 3.4), clusterCenter.z);
     group.add(base);
 
     configScene.add(group);
@@ -6329,11 +6332,11 @@ tailwind.config = {
       alive,
       seedIndex,
       cellRadius,
-      orbitRadius: maxDistance * 6.2,
-      orbitHeight: maxDistance * 3.8,
+      orbitRadius: maxDistance * 8.6,
+      orbitHeight: maxDistance * 5.2,
       orbitSpeed: 0.22,
       startedAt: performance.now() * 0.001,
-      lookAt: new THREE.Vector3(cellRadius * 0.5, cellRadius * 0.5, cellRadius * 0.5)
+      lookAt: clusterCenter.clone()
     };
 
     styleOverlayTag(configCellLabel, 0xff6600);
@@ -6341,7 +6344,7 @@ tailwind.config = {
     hideOverlayLabel(configShardLabel);
     hideOverlayLabel(configHoverLabel);
     configRegionLabels.forEach(hideOverlayLabel);
-    configStageCaption.textContent = 'RHOMBIC DODECAHEDRON // 4-CELL SAMPLE';
+    configStageCaption.textContent = 'RHOMBIC DODECAHEDRON // ONE-SIDED SAMPLE';
     renderConfigScene();
   }
 
