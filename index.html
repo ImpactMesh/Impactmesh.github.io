@@ -714,7 +714,7 @@ tailwind.config = {
             <div class="mt-5 space-y-4">
               <div>
                 <div class="flex items-center gap-3">
-                  <div class="text-xs md:text-sm text-tertiary tracking-[0.28em] font-bold yellow-bloom">2D</div>
+                  <div class="text-xs md:text-sm text-tertiary tracking-[0.28em] font-bold yellow-bloom">2 DIMENSIONAL</div>
                   <div class="h-px flex-1 bg-primary/18"></div>
                 </div>
                 <div class="mt-3 space-y-3">
@@ -725,15 +725,23 @@ tailwind.config = {
               </div>
               <div>
                 <div class="flex items-center gap-3 pt-1">
-                  <div class="text-xs md:text-sm text-tertiary tracking-[0.28em] font-bold yellow-bloom">3D</div>
+                  <div class="text-xs md:text-sm text-tertiary tracking-[0.28em] font-bold yellow-bloom">3 DIMENSIONAL</div>
                   <div class="h-px flex-1 bg-primary/18"></div>
                 </div>
                 <div class="mt-3 space-y-3">
                   <button id="config-btn-3d-orthogonal" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-orthogonal')">3D ORTHOGONAL GRID</button>
                   <button id="config-btn-3d-hexagonal-stacked" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-stacked')">3D HEXAGONAL STACKED</button>
                   <button id="config-btn-3d-hexagonal-offset" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-offset')">3D HEXAGONAL OFFSET</button>
-                  <button id="config-btn-arbitrary-connectivity" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('arbitrary-connectivity')">ARBITRARY CONNECTIVITY</button>
                   <button id="config-btn-rhombic-dodecahedron" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('rhombic-dodecahedron')"><span class="block">RHOMBIC DODECAHEDRON</span><span class="block mt-1 text-[9px] tracking-[0.16em] opacity-70">(EXPERIMENTAL)</span></button>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center gap-3 pt-1">
+                  <div class="text-xs md:text-sm text-tertiary tracking-[0.28em] font-bold yellow-bloom">N-DIMENSIONAL</div>
+                  <div class="h-px flex-1 bg-primary/18"></div>
+                </div>
+                <div class="mt-3 space-y-3">
+                  <button id="config-btn-arbitrary-connectivity" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('arbitrary-connectivity')">ARBITRARY CONNECTIVITY</button>
                 </div>
               </div>
             </div>
