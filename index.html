@@ -879,6 +879,7 @@ tailwind.config = {
   let hexagonalState = null;
   let hexagonalStackedState = null;
   let hexagonalOffsetState = null;
+  let arbitraryConnectivityState = null;
   let areasState = null;
 
   const CONFIG_BUTTON_ACTIVE = 'w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom';
@@ -1098,6 +1099,7 @@ tailwind.config = {
     hexagonalState = null;
     hexagonalStackedState = null;
     hexagonalOffsetState = null;
+    arbitraryConnectivityState = null;
     areasState = null;
     configHoveredCellIndex = null;
     if (configRegionSvg) {
@@ -1136,6 +1138,7 @@ tailwind.config = {
     if (configSelectedMode === '2d-hexagonal') return hexagonalState;
     if (configSelectedMode === '3d-hexagonal-stacked') return hexagonalStackedState;
     if (configSelectedMode === '3d-hexagonal-offset') return hexagonalOffsetState;
+    if (configSelectedMode === 'arbitrary-connectivity') return arbitraryConnectivityState;
     if (configSelectedMode === '2d-areas') return areasState;
     return null;
   }
@@ -1172,6 +1175,12 @@ tailwind.config = {
     if (mode === '3d-hexagonal-offset') {
       if (!hexagonalOffsetState) prepareHexagonalOffsetConfiguration(false);
       startHexagonalOffsetGrowth();
+      return;
+    }
+
+    if (mode === 'arbitrary-connectivity') {
+      if (!arbitraryConnectivityState) prepareArbitraryConnectivityConfiguration(false);
+      startArbitraryConnectivityGrowth();
       return;
     }
 
@@ -1635,6 +1644,46 @@ tailwind.config = {
     });
   }
 
+  function getArbitraryConnectivityVisibleMeshes() {
+    if (!arbitraryConnectivityState?.nodes?.length) return [];
+    return arbitraryConnectivityState.nodes
+      .filter((node, index) => arbitraryConnectivityState.alive.has(index))
+      .map((node) => node.mesh);
+  }
+
+  function pickArbitraryConnectivityHoverTarget(clientX, clientY) {
+    if (!configRenderer || !configStage || !arbitraryConnectivityState || !configPerspectiveCamera) return null;
+
+    const rect = configRenderer.domElement.getBoundingClientRect();
+    const localX = clientX - rect.left;
+    const localY = clientY - rect.top;
+    let best = null;
+    let fallback = null;
+
+    getArbitraryConnectivityVisibleMeshes().forEach((mesh) => {
+      const center = projectConfigPointToStage(mesh.position.x, mesh.position.y, mesh.position.z);
+      const edge = projectConfigPointToStage(mesh.position.x + arbitraryConnectivityState.nodeRadius, mesh.position.y, mesh.position.z);
+      if (!center || !edge) return;
+      const radius = Math.max(14, Math.hypot(edge.x - center.x, edge.y - center.y) * 1.6);
+      const distance = Math.hypot(localX - center.x, localY - center.y);
+      if (!fallback || distance < fallback.distance) fallback = { object: mesh, distance };
+      if (distance > radius) return;
+
+      const dx = mesh.position.x - configPerspectiveCamera.position.x;
+      const dy = mesh.position.y - configPerspectiveCamera.position.y;
+      const dz = mesh.position.z - configPerspectiveCamera.position.z;
+      const cameraDistance = Math.hypot(dx, dy, dz);
+      const score = cameraDistance + distance * 0.03;
+      if (!best || score < best.score) {
+        best = { score, object: mesh };
+      }
+    });
+
+    if (best) return best;
+    if (fallback && fallback.distance <= 34) return { score: fallback.distance, object: fallback.object };
+    return null;
+  }
+
   function pickHexagonal3dHoverTarget(activeState, clientX, clientY) {
     if (!configRenderer || !configStage || !activeState || !configPerspectiveCamera) return null;
 
@@ -1750,6 +1799,14 @@ tailwind.config = {
         hitObject.position.z
       );
     }
+    if (activeState === arbitraryConnectivityState && hitObject?.position) {
+      const nodeRadius = activeState?.nodeRadius || 0.2;
+      return new THREE.Vector3(
+        hitObject.position.x,
+        hitObject.position.y + nodeRadius * 1.35,
+        hitObject.position.z
+      );
+    }
     return cell.mesh.position;
   }
 
@@ -1822,6 +1879,8 @@ tailwind.config = {
       hitObject = pickOrthogonal3dHoverTarget(event.clientX, event.clientY)?.object || null;
     } else if (activeState === hexagonalStackedState || activeState === hexagonalOffsetState) {
       hitObject = pickHexagonal3dHoverTarget(activeState, event.clientX, event.clientY)?.object || null;
+    } else if (activeState === arbitraryConnectivityState) {
+      hitObject = pickArbitraryConnectivityHoverTarget(event.clientX, event.clientY)?.object || null;
     } else {
       const rect = configRenderer.domElement.getBoundingClientRect();
       const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -6052,6 +6111,635 @@ tailwind.config = {
     updateOverlayLabelPosition(configHoverLabel);
   }
 
+  function getArbitraryConnectivityLabelPosition(node) {
+    if (!arbitraryConnectivityState || !node?.mesh) return node?.mesh?.position || new THREE.Vector3();
+    return new THREE.Vector3(
+      node.mesh.position.x,
+      node.mesh.position.y + arbitraryConnectivityState.nodeRadius * 1.35,
+      node.mesh.position.z
+    );
+  }
+
+  function prepareArbitraryConnectivityConfiguration(autoStart) {
+    clearConfigGroup();
+    if (configRegionSvg) {
+      configRegionSvg.style.display = 'none';
+      configRegionSvg.innerHTML = '';
+    }
+
+    configSelectedMode = 'arbitrary-connectivity';
+    configActiveCamera = configPerspectiveCamera;
+
+    const rng = createSeededRandom(0xAC71C0DE);
+    const nodeRadius = 0.2;
+    const levels = [1, 3, 5, 7, 9, 11];
+    const levelSpacing = 1.45;
+    const group = new THREE.Group();
+    const regionOverlayGroup = new THREE.Group();
+    const nodesGroup = new THREE.Group();
+    const edgesGroup = new THREE.Group();
+    group.add(regionOverlayGroup);
+    group.add(edgesGroup);
+    group.add(nodesGroup);
+
+    const base = new THREE.Mesh(
+      new THREE.CircleGeometry(5.9, 64),
+      new THREE.MeshBasicMaterial({ color: 0x090909, transparent: true, opacity: 0.96 })
+    );
+    base.rotation.x = -Math.PI / 2;
+    base.position.y = -2.05;
+    group.add(base);
+
+    const rings = new THREE.Group();
+    group.add(rings);
+    for (let level = 1; level < levels.length; level += 1) {
+      const ring = new THREE.LineLoop(
+        new THREE.BufferGeometry().setFromPoints(Array.from({ length: 48 }, (_, i) => {
+          const angle = (i / 48) * Math.PI * 2;
+          const radius = level * levelSpacing;
+          return new THREE.Vector3(Math.cos(angle) * radius, -2.03, Math.sin(angle) * radius);
+        })),
+        new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.12 })
+      );
+      rings.add(ring);
+    }
+
+    const sphereGeometry = new THREE.SphereGeometry(nodeRadius, 18, 18);
+    const nodes = [];
+    const levelsNodes = [];
+    let nodeCounter = 0;
+
+    levels.forEach((count, levelIndex) => {
+      const levelNodes = [];
+      if (levelIndex === 0) {
+        const material = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.98 });
+        const mesh = new THREE.Mesh(sphereGeometry, material);
+        mesh.position.set(0, 0, 0);
+        mesh.userData.cellIndex = nodeCounter;
+        nodesGroup.add(mesh);
+        const node = {
+          index: nodeCounter,
+          level: 0,
+          parents: [],
+          children: [],
+          mesh,
+          material,
+          cellId: makeConfigCellId(0, 0),
+          state: 'dead',
+          baseOpacity: 0.98,
+          pulseOffset: rng() * Math.PI * 2
+        };
+        nodes.push(node);
+        levelNodes.push(nodeCounter);
+        nodeCounter += 1;
+      } else {
+        const radius = levelIndex * levelSpacing;
+        const angleStart = rng() * Math.PI * 2;
+        for (let i = 0; i < count; i += 1) {
+          const angle = angleStart + (i / count) * Math.PI * 2 + (rng() - 0.5) * 0.22;
+          const radialJitter = (rng() - 0.5) * 0.34;
+          const verticalJitter = (rng() - 0.5) * (0.38 + levelIndex * 0.11);
+          const x = Math.cos(angle) * (radius + radialJitter);
+          const z = Math.sin(angle) * (radius + radialJitter);
+          const y = verticalJitter;
+          const material = new THREE.MeshBasicMaterial({ color: 0x1a0c07, transparent: true, opacity: 0.14 });
+          const mesh = new THREE.Mesh(sphereGeometry, material);
+          mesh.position.set(x, y, z);
+          mesh.userData.cellIndex = nodeCounter;
+          nodesGroup.add(mesh);
+          const node = {
+            index: nodeCounter,
+            level: levelIndex,
+            parents: [],
+            children: [],
+            mesh,
+            material,
+            cellId: makeConfigCellId(levelIndex, i + 1),
+            state: 'dead',
+            baseOpacity: 0.14,
+            pulseOffset: rng() * Math.PI * 2
+          };
+          nodes.push(node);
+          levelNodes.push(nodeCounter);
+          nodeCounter += 1;
+        }
+      }
+      levelsNodes.push(levelNodes);
+    });
+
+    const edges = [];
+    for (let levelIndex = 1; levelIndex < levelsNodes.length; levelIndex += 1) {
+      const currentLevel = levelsNodes[levelIndex];
+      const previousPool = levelsNodes[levelIndex - 1];
+      const fallbackPool = levelsNodes.slice(0, levelIndex).flat();
+      currentLevel.forEach((nodeIndex, indexWithinLevel) => {
+        const node = nodes[nodeIndex];
+        const parentCount = levelIndex <= 2 ? 1 : (rng() < 0.34 ? 2 : 1);
+        const rankedParents = shuffled(fallbackPool, rng)
+          .map((parentIndex) => {
+            const parent = nodes[parentIndex];
+            const dx = node.mesh.position.x - parent.mesh.position.x;
+            const dy = node.mesh.position.y - parent.mesh.position.y;
+            const dz = node.mesh.position.z - parent.mesh.position.z;
+            const distance = Math.hypot(dx, dy, dz);
+            const levelPenalty = (levelIndex - parent.level - 1) * 0.45;
+            return { parentIndex, score: distance + levelPenalty };
+          })
+          .sort((a, b) => a.score - b.score);
+
+        const selected = [];
+        rankedParents.forEach(({ parentIndex }) => {
+          if (selected.length >= parentCount) return;
+          if (selected.includes(parentIndex)) return;
+          selected.push(parentIndex);
+        });
+        if (!selected.length && previousPool.length) {
+          selected.push(previousPool[indexWithinLevel % previousPool.length]);
+        }
+
+        selected.forEach((parentIndex) => {
+          const parent = nodes[parentIndex];
+          node.parents.push(parentIndex);
+          parent.children.push(nodeIndex);
+
+          const direction = new THREE.Vector3().subVectors(node.mesh.position, parent.mesh.position);
+          const distance = direction.length();
+          const safeDistance = Math.max(0.2, distance - nodeRadius * 2.4);
+          direction.normalize();
+          const origin = parent.mesh.position.clone().addScaledVector(direction, nodeRadius * 1.3);
+          const arrow = new THREE.ArrowHelper(direction, origin, safeDistance, 0xffa347, Math.min(0.26, safeDistance * 0.24), 0.11);
+          arrow.visible = false;
+          arrow.line.material.transparent = true;
+          arrow.line.material.opacity = 0.24;
+          arrow.cone.material.transparent = true;
+          arrow.cone.material.opacity = 0.34;
+          edgesGroup.add(arrow);
+          edges.push({ from: parentIndex, to: nodeIndex, arrow });
+        });
+      });
+    }
+
+    configScene.add(group);
+    configCurrentGroup = group;
+    arbitraryConnectivityState = {
+      group,
+      regionOverlayGroup,
+      nodesGroup,
+      edgesGroup,
+      nodes,
+      cells: nodes,
+      edges,
+      levelsNodes,
+      regions: [],
+      alive: new Set(),
+      latest: new Set(),
+      seedIndex: 0,
+      shardLabelIndex: null,
+      phase: 'idle',
+      running: false,
+      startedAt: 0,
+      lastGrowthAt: 0,
+      growthStep: 0,
+      nodeRadius,
+      orbitRadius: 9.8,
+      orbitHeight: 7.4,
+      orbitSpeed: 0.12,
+      maxAlive: nodes.length
+    };
+
+    hideOverlayLabel(configCellLabel);
+    hideOverlayLabel(configShardLabel);
+    hideOverlayLabel(configHoverLabel);
+    configRegionLabels.forEach(hideOverlayLabel);
+    configStageCaption.textContent = 'ARBITRARY CONNECTIVITY // CLICK TO INITIATE';
+    renderConfigScene();
+
+    if (autoStart) startArbitraryConnectivityGrowth();
+  }
+
+  function resetArbitraryConnectivityNodes() {
+    if (!arbitraryConnectivityState) return;
+    arbitraryConnectivityState.nodes.forEach((node, index) => {
+      node.state = 'dead';
+      node.baseOpacity = index === arbitraryConnectivityState.seedIndex ? 0.24 : 0.14;
+      node.material.color.setHex(0x1a0c07);
+      node.material.opacity = index === arbitraryConnectivityState.seedIndex ? 0.24 : 0.14;
+      node.mesh.scale.setScalar(1);
+    });
+    arbitraryConnectivityState.edges.forEach(({ arrow }) => {
+      arrow.visible = false;
+    });
+    arbitraryConnectivityState.regions.forEach((region) => {
+      clearArbitraryConnectivityRegionLines(region);
+      hideOverlayLabel(region.label);
+    });
+  }
+
+  function setArbitraryConnectivityNodeState(index, state) {
+    if (!arbitraryConnectivityState) return;
+    const node = arbitraryConnectivityState.nodes[index];
+    if (!node) return;
+
+    node.state = state;
+    if (state === 'dead') {
+      node.baseOpacity = 0.14;
+      node.material.color.setHex(0x1a0c07);
+      node.material.opacity = 0.14;
+      node.mesh.scale.setScalar(1);
+      return;
+    }
+    if (state === 'stem-bright') {
+      node.baseOpacity = 0.98;
+      node.material.color.setHex(0xff6600);
+      node.material.opacity = 0.98;
+      node.mesh.scale.setScalar(1.18);
+      return;
+    }
+    if (state === 'stem-dim') {
+      node.baseOpacity = 0.28;
+      node.material.color.setHex(0x4d1b05);
+      node.material.opacity = 0.28;
+      node.mesh.scale.setScalar(1.06);
+      return;
+    }
+    if (state === 'core') {
+      node.baseOpacity = 0.7;
+      node.material.color.setHex(0xd97a32);
+      node.material.opacity = 0.7;
+      node.mesh.scale.setScalar(1);
+      return;
+    }
+    if (state === 'frontier') {
+      node.baseOpacity = 0.82;
+      node.material.color.setHex(0xf0a45a);
+      node.material.opacity = 0.82;
+      node.mesh.scale.setScalar(1.08);
+    }
+  }
+
+  function createArbitraryConnectivityRegions() {
+    return [
+      {
+        index: 0,
+        label: configRegionLabels[0],
+        text: 'SHARD SET 1: SERVER 7A91C2',
+        color: 0x50f080,
+        minCells: 2,
+        lines: [],
+        pulseMaterials: []
+      },
+      {
+        index: 1,
+        label: configRegionLabels[1],
+        text: 'SHARD SET 2: SERVER C4F8D1',
+        color: 0xffc31a,
+        minCells: 2,
+        lines: [],
+        pulseMaterials: []
+      },
+      {
+        index: 2,
+        label: configRegionLabels[2],
+        text: 'SHARD SET 3: SERVER 91FE27',
+        color: 0xa0fff5,
+        minCells: 2,
+        lines: [],
+        pulseMaterials: []
+      }
+    ];
+  }
+
+  function normalizeArbitraryAngle(angle) {
+    let value = angle;
+    while (value <= -Math.PI) value += Math.PI * 2;
+    while (value > Math.PI) value -= Math.PI * 2;
+    return value;
+  }
+
+  function getArbitraryConnectivityRegionMembership(index) {
+    if (!arbitraryConnectivityState || arbitraryConnectivityState.seedIndex === null) return [];
+    if (index === arbitraryConnectivityState.seedIndex) return [0, 1, 2];
+
+    const node = arbitraryConnectivityState.nodes[index];
+    const angle = Math.atan2(node.mesh.position.z, node.mesh.position.x);
+    const centers = [-Math.PI * 2 / 3, 0, Math.PI * 2 / 3];
+    const ranked = centers
+      .map((center, regionIndex) => ({ regionIndex, diff: Math.abs(normalizeArbitraryAngle(angle - center)) }))
+      .sort((a, b) => a.diff - b.diff);
+
+    const memberships = [ranked[0].regionIndex];
+    const radius = Math.hypot(node.mesh.position.x, node.mesh.position.z);
+    if (radius > 1.35 && ranked[1] && Math.abs(ranked[1].diff - ranked[0].diff) < 0.28) {
+      memberships.push(ranked[1].regionIndex);
+    }
+    return memberships;
+  }
+
+  function getArbitraryConnectivityRegionMembers(region) {
+    if (!arbitraryConnectivityState) return [];
+    return [...arbitraryConnectivityState.alive].filter((index) => getArbitraryConnectivityRegionMembership(index).includes(region.index));
+  }
+
+  function clearArbitraryConnectivityRegionLines(region) {
+    if (!arbitraryConnectivityState) return;
+    region?.lines?.forEach((mesh) => {
+      arbitraryConnectivityState.regionOverlayGroup.remove(mesh);
+      mesh.geometry?.dispose?.();
+      mesh.material?.dispose?.();
+    });
+    if (region) {
+      region.lines = [];
+      region.pulseMaterials = [];
+    }
+  }
+
+  function computeConvexHullXZ(points) {
+    if (points.length <= 2) return points.slice();
+    const sorted = points
+      .map((point) => ({ x: point.x, z: point.z }))
+      .sort((a, b) => a.x === b.x ? a.z - b.z : a.x - b.x);
+
+    function cross(o, a, b) {
+      return (a.x - o.x) * (b.z - o.z) - (a.z - o.z) * (b.x - o.x);
+    }
+
+    const lower = [];
+    sorted.forEach((point) => {
+      while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], point) <= 0) lower.pop();
+      lower.push(point);
+    });
+
+    const upper = [];
+    sorted.slice().reverse().forEach((point) => {
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], point) <= 0) upper.pop();
+      upper.push(point);
+    });
+
+    lower.pop();
+    upper.pop();
+    return lower.concat(upper);
+  }
+
+  function buildArbitraryConnectivityBlobLoop(memberIndexes) {
+    const members = memberIndexes.map((index) => arbitraryConnectivityState.nodes[index]);
+    if (!members.length) return { points: [], baseY: 0, ribbonHeight: 0 };
+
+    const centroid = members.reduce((acc, node) => {
+      acc.x += node.mesh.position.x;
+      acc.z += node.mesh.position.z;
+      acc.y += node.mesh.position.y;
+      return acc;
+    }, { x: 0, y: 0, z: 0 });
+    centroid.x /= members.length;
+    centroid.y /= members.length;
+    centroid.z /= members.length;
+
+    const hull = computeConvexHullXZ(members.map((node) => ({ x: node.mesh.position.x, z: node.mesh.position.z })));
+    const margin = arbitraryConnectivityState.nodeRadius * 2.3;
+    const outline = (hull.length >= 3 ? hull : Array.from({ length: 8 }, (_, i) => {
+      const angle = (i / 8) * Math.PI * 2;
+      const maxDistance = Math.max(...members.map((node) => Math.hypot(node.mesh.position.x - centroid.x, node.mesh.position.z - centroid.z)), arbitraryConnectivityState.nodeRadius * 1.8);
+      return {
+        x: centroid.x + Math.cos(angle) * (maxDistance + margin),
+        z: centroid.z + Math.sin(angle) * (maxDistance + margin)
+      };
+    })).map((point) => {
+      const dx = point.x - centroid.x;
+      const dz = point.z - centroid.z;
+      const length = Math.hypot(dx, dz) || 1;
+      return {
+        x: point.x + (dx / length) * margin,
+        z: point.z + (dz / length) * margin
+      };
+    });
+
+    const curve = new THREE.CatmullRomCurve3(outline.map((point) => new THREE.Vector3(point.x, 0, point.z)), true, 'catmullrom', 0.5);
+    const points = curve.getPoints(Math.max(24, outline.length * 8)).map((point) => ({ x: point.x, z: point.z }));
+    const minY = Math.min(...members.map((node) => node.mesh.position.y)) - arbitraryConnectivityState.nodeRadius * 1.25;
+    const maxY = Math.max(...members.map((node) => node.mesh.position.y)) + arbitraryConnectivityState.nodeRadius * 1.45;
+    return {
+      points,
+      baseY: minY,
+      ribbonHeight: Math.max(arbitraryConnectivityState.nodeRadius * 2.4, maxY - minY)
+    };
+  }
+
+  function buildArbitraryConnectivityRegionOutlineMeshes(region, memberIndexes) {
+    if (!arbitraryConnectivityState || !memberIndexes.length) return [];
+    const { points, baseY, ribbonHeight } = buildArbitraryConnectivityBlobLoop(memberIndexes);
+    if (points.length < 2) return [];
+
+    const geometry = buildHexPolylineStripGeometry(points, true, arbitraryConnectivityState.nodeRadius * 1.4, ribbonHeight);
+    if (!geometry) return [];
+    const material = new THREE.MeshBasicMaterial({ color: region.color, transparent: true, opacity: 0.34, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.y = baseY;
+    mesh.userData.baseY = baseY;
+    mesh.userData.ribbonHeight = ribbonHeight;
+    mesh.renderOrder = 12;
+    arbitraryConnectivityState.regionOverlayGroup.add(mesh);
+    region.pulseMaterials.push(material);
+    return [mesh];
+  }
+
+  function updateArbitraryConnectivityRegions() {
+    if (!arbitraryConnectivityState?.regions?.length) return;
+    arbitraryConnectivityState.regions.forEach((region) => {
+      const memberIndexes = getArbitraryConnectivityRegionMembers(region);
+      clearArbitraryConnectivityRegionLines(region);
+      const regionMinCells = memberIndexes.includes(arbitraryConnectivityState.seedIndex) ? 1 : region.minCells;
+      if (memberIndexes.length < regionMinCells) {
+        hideOverlayLabel(region.label);
+        return;
+      }
+
+      region.lines = buildArbitraryConnectivityRegionOutlineMeshes(region, memberIndexes);
+      if (!region.lines.length) {
+        hideOverlayLabel(region.label);
+        return;
+      }
+
+      styleRegionLabel(region);
+      region.label.classList.remove('hidden');
+    });
+  }
+
+  function updateArbitraryConnectivityRegionPulse(time) {
+    if (!arbitraryConnectivityState?.regions?.length) return;
+    arbitraryConnectivityState.regions.forEach((region, index) => {
+      const wave = Math.sin(time * 1.76 + index * 1.05);
+      const pulse = 0.5 + wave * 0.5;
+      const lift = wave * 0.04;
+      region.pulseMaterials.forEach((material) => {
+        material.opacity = 0.12 + pulse * 0.26;
+      });
+      region.lines.forEach((mesh) => {
+        if (mesh?.userData?.baseY !== undefined) mesh.position.y = mesh.userData.baseY + lift;
+      });
+    });
+  }
+
+  function updateArbitraryConnectivityEdges() {
+    if (!arbitraryConnectivityState) return;
+    arbitraryConnectivityState.edges.forEach(({ from, to, arrow }) => {
+      const visible = arbitraryConnectivityState.alive.has(from) && arbitraryConnectivityState.alive.has(to);
+      arrow.visible = visible;
+      if (!visible) return;
+      const targetNode = arbitraryConnectivityState.nodes[to];
+      const opacity = targetNode.state === 'frontier' ? 0.46 : 0.32;
+      arrow.line.material.opacity = opacity;
+      arrow.cone.material.opacity = Math.min(0.62, opacity + 0.12);
+    });
+  }
+
+  function updateArbitraryConnectivityShardLabel() {
+    if (!arbitraryConnectivityState || arbitraryConnectivityState.alive.size < 4) return;
+    let bestIndex = null;
+    let bestScore = -Infinity;
+    arbitraryConnectivityState.alive.forEach((index) => {
+      if (index === arbitraryConnectivityState.seedIndex) return;
+      const node = arbitraryConnectivityState.nodes[index];
+      const score = Math.hypot(node.mesh.position.x, node.mesh.position.y * 0.7, node.mesh.position.z);
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    });
+    if (bestIndex !== null) {
+      arbitraryConnectivityState.shardLabelIndex = bestIndex;
+      showOverlayLabel(configShardLabel, 'CONNECTED CELLS', getArbitraryConnectivityLabelPosition(arbitraryConnectivityState.nodes[bestIndex]));
+    }
+  }
+
+  function updateArbitraryConnectivityCameraOrbit(time) {
+    if (!arbitraryConnectivityState || configActiveCamera !== configPerspectiveCamera) return;
+    const elapsed = Math.max(0, time - arbitraryConnectivityState.startedAt);
+    const angle = elapsed * arbitraryConnectivityState.orbitSpeed;
+    const verticalBase = arbitraryConnectivityState.orbitHeight * 0.55;
+    const verticalAmplitude = arbitraryConnectivityState.orbitHeight * 0.4;
+    configPerspectiveCamera.position.set(
+      Math.cos(angle) * arbitraryConnectivityState.orbitRadius,
+      verticalBase + Math.sin(angle * 2.1 + 0.35) * verticalAmplitude,
+      Math.sin(angle) * arbitraryConnectivityState.orbitRadius * 0.82
+    );
+    configPerspectiveCamera.lookAt(0, 0.35, 0);
+  }
+
+  function startArbitraryConnectivityGrowth() {
+    if (!arbitraryConnectivityState) {
+      prepareArbitraryConnectivityConfiguration(true);
+      return;
+    }
+
+    resetArbitraryConnectivityNodes();
+    arbitraryConnectivityState.running = true;
+    arbitraryConnectivityState.phase = 'seed';
+    arbitraryConnectivityState.alive = new Set([arbitraryConnectivityState.seedIndex]);
+    arbitraryConnectivityState.latest = new Set([arbitraryConnectivityState.seedIndex]);
+    arbitraryConnectivityState.shardLabelIndex = null;
+    arbitraryConnectivityState.regions = createArbitraryConnectivityRegions();
+    arbitraryConnectivityState.startedAt = performance.now() * 0.001;
+    arbitraryConnectivityState.lastGrowthAt = arbitraryConnectivityState.startedAt;
+    arbitraryConnectivityState.growthStep = 0;
+
+    setArbitraryConnectivityNodeState(arbitraryConnectivityState.seedIndex, 'stem-bright');
+    updateArbitraryConnectivityEdges();
+    updateArbitraryConnectivityRegions();
+    styleOverlayTag(configCellLabel, 0xff6600);
+    styleOverlayTag(configShardLabel, 0xffa347);
+    showOverlayLabel(configCellLabel, 'STEM CELL', getArbitraryConnectivityLabelPosition(arbitraryConnectivityState.nodes[arbitraryConnectivityState.seedIndex]));
+    hideOverlayLabel(configShardLabel);
+    configStageCaption.textContent = 'ARBITRARY CONNECTIVITY // STEM CELL INITIALIZING';
+    renderConfigScene();
+  }
+
+  function advanceArbitraryConnectivityGrowth() {
+    if (!arbitraryConnectivityState) return;
+
+    arbitraryConnectivityState.latest.forEach((index) => {
+      if (index !== arbitraryConnectivityState.seedIndex) setArbitraryConnectivityNodeState(index, 'core');
+    });
+
+    const nextLevel = arbitraryConnectivityState.growthStep + 1;
+    const nextIndexes = arbitraryConnectivityState.levelsNodes[nextLevel] || [];
+    if (!nextIndexes.length) {
+      arbitraryConnectivityState.running = false;
+      arbitraryConnectivityState.phase = 'stable';
+      configStageCaption.textContent = '';
+      updateArbitraryConnectivityEdges();
+      updateArbitraryConnectivityRegions();
+      return;
+    }
+
+    const nextFrontier = new Set(nextIndexes);
+    nextIndexes.forEach((index) => {
+      arbitraryConnectivityState.alive.add(index);
+      setArbitraryConnectivityNodeState(index, 'frontier');
+    });
+
+    arbitraryConnectivityState.latest = nextFrontier;
+    arbitraryConnectivityState.growthStep = nextLevel;
+    updateArbitraryConnectivityEdges();
+    updateArbitraryConnectivityRegions();
+    updateArbitraryConnectivityShardLabel();
+    configStageCaption.textContent = `ARBITRARY CONNECTIVITY // GROWTH WAVE ${String(arbitraryConnectivityState.growthStep).padStart(2, '0')}`;
+
+    if (arbitraryConnectivityState.alive.size >= arbitraryConnectivityState.maxAlive || nextLevel >= arbitraryConnectivityState.levelsNodes.length - 1) {
+      arbitraryConnectivityState.alive.forEach((index) => {
+        if (index !== arbitraryConnectivityState.seedIndex) setArbitraryConnectivityNodeState(index, 'core');
+      });
+      arbitraryConnectivityState.running = false;
+      arbitraryConnectivityState.phase = 'stable';
+      configStageCaption.textContent = '';
+      updateArbitraryConnectivityEdges();
+      updateArbitraryConnectivityRegions();
+    }
+  }
+
+  function updateArbitraryConnectivityAnimation(time) {
+    if (!arbitraryConnectivityState || arbitraryConnectivityState.seedIndex === null) return;
+
+    const seedIndex = arbitraryConnectivityState.seedIndex;
+    const elapsed = time - arbitraryConnectivityState.startedAt;
+
+    if (arbitraryConnectivityState.phase === 'seed') {
+      const blinkOn = Math.floor(elapsed * 5.4) % 2 === 0;
+      setArbitraryConnectivityNodeState(seedIndex, blinkOn ? 'stem-bright' : 'stem-dim');
+      if (elapsed >= 1.2) {
+        arbitraryConnectivityState.phase = 'grow';
+        setArbitraryConnectivityNodeState(seedIndex, 'stem-bright');
+        arbitraryConnectivityState.lastGrowthAt = time;
+        configStageCaption.textContent = 'ARBITRARY CONNECTIVITY // FIRST EXPANSION';
+      }
+    } else {
+      const seedNode = arbitraryConnectivityState.nodes[seedIndex];
+      if (seedNode) {
+        seedNode.material.opacity = 0.9 + ((Math.sin(time * 4.8) + 1) * 0.04);
+        seedNode.mesh.scale.setScalar(1.12 + ((Math.sin(time * 4.3) + 1) * 0.04));
+      }
+      if (arbitraryConnectivityState.running && time - arbitraryConnectivityState.lastGrowthAt >= 0.34) {
+        arbitraryConnectivityState.lastGrowthAt = time;
+        advanceArbitraryConnectivityGrowth();
+      }
+    }
+
+    arbitraryConnectivityState.nodes.forEach((node, index) => {
+      if (!arbitraryConnectivityState.alive.has(index) || index === seedIndex) return;
+      const pulse = Math.sin(time * 1.6 + node.pulseOffset) * 0.03;
+      node.mesh.scale.setScalar((node.state === 'frontier' ? 1.08 : 1) + pulse);
+    });
+
+    updateArbitraryConnectivityCameraOrbit(time);
+    updateArbitraryConnectivityRegionPulse(time);
+    updatePulsingOverlayLabel(configCellLabel, time, { phase: 0, speed: 1.8, scaleAmplitude: 0.035, opacityBase: 0.86, opacityAmplitude: 0.12, glow: 20 });
+    updatePulsingOverlayLabel(configShardLabel, time, { phase: 1.2, speed: 1.5, scaleAmplitude: 0.025, opacityBase: 0.82, opacityAmplitude: 0.12, glow: 16 });
+    updatePulsingOverlayLabel(configHoverLabel, time, { phase: 0.5, speed: 1.9, scaleAmplitude: 0.018, opacityBase: 0.86, opacityAmplitude: 0.08, glow: 14 });
+
+    updateOverlayLabelPosition(configCellLabel);
+    updateOverlayLabelPosition(configShardLabel);
+    updateOverlayLabelPosition(configHoverLabel);
+  }
+
   function animateConfigScene() {
     requestAnimationFrame(animateConfigScene);
 
@@ -6063,6 +6751,7 @@ tailwind.config = {
     if (configSelectedMode === '2d-hexagonal') updateHexagonalAnimation(time);
     if (configSelectedMode === '3d-hexagonal-stacked') updateHexagonalStackedAnimation(time);
     if (configSelectedMode === '3d-hexagonal-offset') updateHexagonalOffsetAnimation(time);
+    if (configSelectedMode === 'arbitrary-connectivity') updateArbitraryConnectivityAnimation(time);
     if (configSelectedMode === '2d-areas') updateAreasAnimation(time);
 
     if (!document.getElementById('config-overlay').classList.contains('hidden')) {
