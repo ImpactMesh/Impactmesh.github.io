@@ -6180,13 +6180,15 @@ tailwind.config = {
 
     const base = new THREE.Mesh(
       new THREE.CircleGeometry(5.9, 64),
-      new THREE.MeshBasicMaterial({ color: 0x090909, transparent: true, opacity: 0.96 })
+      new THREE.MeshBasicMaterial({ color: 0x090909, transparent: true, opacity: 0.96, depthWrite: false, depthTest: false })
     );
     base.rotation.x = -Math.PI / 2;
     base.position.y = -2.05;
+    base.renderOrder = -20;
     group.add(base);
 
     const rings = new THREE.Group();
+    rings.renderOrder = -19;
     group.add(rings);
     for (let level = 1; level < levels.length; level += 1) {
       const ring = new THREE.LineLoop(
@@ -6195,8 +6197,9 @@ tailwind.config = {
           const radius = level * levelSpacing;
           return new THREE.Vector3(Math.cos(angle) * radius, -2.03, Math.sin(angle) * radius);
         })),
-        new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.12 })
+        new THREE.LineBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.12, depthWrite: false, depthTest: false })
       );
+      ring.renderOrder = -19;
       rings.add(ring);
     }
 
