@@ -720,6 +720,7 @@ tailwind.config = {
               <button id="config-btn-3d-hexagonal-stacked" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-stacked')">3D HEXAGONAL STACKED</button>
               <button id="config-btn-3d-hexagonal-offset" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('3d-hexagonal-offset')">3D HEXAGONAL OFFSET</button>
               <button id="config-btn-arbitrary-connectivity" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('arbitrary-connectivity')">ARBITRARY CONNECTIVITY</button>
+              <button id="config-btn-rhombic-dodecahedron" type="button" class="w-full text-left bg-surface-container-highest text-on-surface px-4 py-3 border border-outline-variant uppercase font-label font-bold text-xs tracking-[0.2em] hover:bg-primary hover:text-black transition-all" onclick="selectConfigMode('rhombic-dodecahedron')">RHOMBIC DODECAHEDRON</button>
             </div>
           </aside>
           <div id="config-three-stage" class="relative h-full min-h-[28rem] border border-primary/20 bg-[#050505] overflow-hidden">
@@ -880,6 +881,7 @@ tailwind.config = {
   let hexagonalStackedState = null;
   let hexagonalOffsetState = null;
   let arbitraryConnectivityState = null;
+  let rhombicDodecahedronState = null;
   let areasState = null;
 
   const CONFIG_BUTTON_ACTIVE = 'w-full text-left bg-primary text-black font-bold px-4 py-3 border border-primary uppercase font-label text-xs tracking-[0.2em] transition-all button-bloom';
@@ -891,7 +893,8 @@ tailwind.config = {
     '3d-orthogonal': 'config-btn-3d-orthogonal',
     '3d-hexagonal-stacked': 'config-btn-3d-hexagonal-stacked',
     '3d-hexagonal-offset': 'config-btn-3d-hexagonal-offset',
-    'arbitrary-connectivity': 'config-btn-arbitrary-connectivity'
+    'arbitrary-connectivity': 'config-btn-arbitrary-connectivity',
+    'rhombic-dodecahedron': 'config-btn-rhombic-dodecahedron'
   };
 
   const CONFIG_EXPLAINER_TEXT = {
@@ -901,7 +904,8 @@ tailwind.config = {
     '3d-orthogonal': '3D orthogonal grids extend the 2D orthogonal model into volumetric space while preserving the same square-cell adjacency on each layer. Each cell also connects to one cell above and one below, adding two direct vertical neighbors for movement, simulation and partitioning.',
     '3d-hexagonal-stacked': '3D hexagonal stacked grids preserve the standard six-neighbor hex pattern within each layer and add one vertical connection above and one below. This keeps horizontal adjacency predictable while introducing a simple layered structure for three-dimensional simulation.',
     '3d-hexagonal-offset': '3D hexagonal offset grids shift successive layers so a cell aligns with three neighbors above and three below instead of a single vertical column. This produces denser cross-layer connectivity and a more uniform treatment of vertical transitions and spatial diagonals.',
-    'arbitrary-connectivity': 'N-dimensional arbitrary connectivity lets a game define any adjacency structure it needs, whether spatial, systemic, social, or entirely abstract. It is useful when space is not the main organizing structure and progression, interaction, routing, or influence are driven by rules, relationships, or state transitions instead of geometric proximity.'
+    'arbitrary-connectivity': 'N-dimensional arbitrary connectivity lets a game define any adjacency structure it needs, whether spatial, systemic, social, or entirely abstract. It is useful when space is not the main organizing structure and progression, interaction, routing, or influence are driven by rules, relationships, or state transitions instead of geometric proximity.',
+    'rhombic-dodecahedron': 'This quick test packs rhombic dodecahedra on a dense face-centered cubic lattice, so the scene reads as a true 3D space-filling mass rather than a flat diamond tiling. The goal is only to verify whether this denser polyhedral packing is visually legible enough to justify further work.'
   };
 
   function getConfigExplainerText(mode) {
@@ -1100,6 +1104,7 @@ tailwind.config = {
     hexagonalStackedState = null;
     hexagonalOffsetState = null;
     arbitraryConnectivityState = null;
+    rhombicDodecahedronState = null;
     areasState = null;
     configHoveredCellIndex = null;
     if (configRegionSvg) {
@@ -1139,6 +1144,7 @@ tailwind.config = {
     if (configSelectedMode === '3d-hexagonal-stacked') return hexagonalStackedState;
     if (configSelectedMode === '3d-hexagonal-offset') return hexagonalOffsetState;
     if (configSelectedMode === 'arbitrary-connectivity') return arbitraryConnectivityState;
+    if (configSelectedMode === 'rhombic-dodecahedron') return rhombicDodecahedronState;
     if (configSelectedMode === '2d-areas') return areasState;
     return null;
   }
@@ -1181,6 +1187,11 @@ tailwind.config = {
     if (mode === 'arbitrary-connectivity') {
       if (!arbitraryConnectivityState) prepareArbitraryConnectivityConfiguration(false);
       startArbitraryConnectivityGrowth();
+      return;
+    }
+
+    if (mode === 'rhombic-dodecahedron') {
+      prepareRhombicDodecahedronConfiguration(false);
       return;
     }
 
@@ -1807,12 +1818,24 @@ tailwind.config = {
         hitObject.position.z
       );
     }
+    if (activeState === rhombicDodecahedronState && hitObject?.position) {
+      const cellRadius = activeState?.cellRadius || 0.34;
+      return new THREE.Vector3(
+        hitObject.position.x,
+        hitObject.position.y + cellRadius * 1.65,
+        hitObject.position.z
+      );
+    }
     return cell.mesh.position;
   }
 
   function formatConfigHoverLabel(activeState, cellIndex, cell, hitObject) {
     if (activeState === arbitraryConnectivityState) {
       const labelPrefix = cellIndex === activeState.seedIndex ? 'STEM CELL' : 'CONNECTED CELL';
+      return `${labelPrefix} ID: ${cell.cellId}`;
+    }
+    if (activeState === rhombicDodecahedronState) {
+      const labelPrefix = cellIndex === activeState.seedIndex ? 'STEM CELL' : 'RHOMBIC CELL';
       return `${labelPrefix} ID: ${cell.cellId}`;
     }
 
@@ -6155,6 +6178,177 @@ tailwind.config = {
     updateOverlayLabelPosition(configHoverLabel);
   }
 
+  function buildRhombicDodecahedronGeometry(radius) {
+    const vertices = [
+      [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1],
+      [0.5, 0.5, 0.5], [0.5, 0.5, -0.5], [0.5, -0.5, 0.5], [0.5, -0.5, -0.5],
+      [-0.5, 0.5, 0.5], [-0.5, 0.5, -0.5], [-0.5, -0.5, 0.5], [-0.5, -0.5, -0.5]
+    ].map(([x, y, z]) => new THREE.Vector3(x * radius, y * radius, z * radius));
+
+    const faceNormals = [
+      [1, 1, 0], [1, -1, 0], [-1, 1, 0], [-1, -1, 0],
+      [1, 0, 1], [1, 0, -1], [-1, 0, 1], [-1, 0, -1],
+      [0, 1, 1], [0, 1, -1], [0, -1, 1], [0, -1, -1]
+    ];
+
+    const positions = [];
+    function pushTriangle(a, b, c) {
+      [a, b, c].forEach((vertex) => positions.push(vertex.x, vertex.y, vertex.z));
+    }
+
+    faceNormals.forEach(([nx, ny, nz]) => {
+      const normal = new THREE.Vector3(nx, ny, nz).normalize();
+      const face = vertices.filter((vertex) => Math.abs((vertex.x * nx) + (vertex.y * ny) + (vertex.z * nz) - radius) < 0.0001);
+      if (face.length !== 4) return;
+
+      const center = face.reduce((acc, vertex) => acc.add(vertex.clone()), new THREE.Vector3()).multiplyScalar(0.25);
+      const ref = Math.abs(normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+      const axisU = new THREE.Vector3().crossVectors(ref, normal).normalize();
+      const axisV = new THREE.Vector3().crossVectors(normal, axisU).normalize();
+      const ordered = face
+        .map((vertex) => {
+          const rel = vertex.clone().sub(center);
+          return {
+            vertex,
+            angle: Math.atan2(rel.dot(axisV), rel.dot(axisU))
+          };
+        })
+        .sort((a, b) => a.angle - b.angle)
+        .map((entry) => entry.vertex);
+
+      const triNormal = new THREE.Vector3().crossVectors(
+        ordered[1].clone().sub(ordered[0]),
+        ordered[2].clone().sub(ordered[0])
+      );
+      if (triNormal.dot(normal) < 0) ordered.reverse();
+
+      pushTriangle(ordered[0], ordered[1], ordered[2]);
+      pushTriangle(ordered[0], ordered[2], ordered[3]);
+    });
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.computeVertexNormals();
+    return geometry;
+  }
+
+  function getRhombicDodecahedronLabelPosition(cell) {
+    if (!rhombicDodecahedronState || !cell?.mesh) return cell?.mesh?.position || new THREE.Vector3();
+    return new THREE.Vector3(
+      cell.mesh.position.x,
+      cell.mesh.position.y + rhombicDodecahedronState.cellRadius * 1.65,
+      cell.mesh.position.z
+    );
+  }
+
+  function prepareRhombicDodecahedronConfiguration(autoStart) {
+    clearConfigGroup();
+    if (configRegionSvg) {
+      configRegionSvg.style.display = 'none';
+      configRegionSvg.innerHTML = '';
+    }
+
+    configSelectedMode = 'rhombic-dodecahedron';
+    configActiveCamera = configPerspectiveCamera;
+
+    const cellRadius = 0.34;
+    const group = new THREE.Group();
+    const cellGeometry = buildRhombicDodecahedronGeometry(cellRadius);
+    const edgeGeometry = new THREE.EdgesGeometry(cellGeometry);
+    const cells = [];
+    const alive = new Set();
+    const basisA = new THREE.Vector3(cellRadius, cellRadius, 0);
+    const basisB = new THREE.Vector3(cellRadius, 0, cellRadius);
+    const basisC = new THREE.Vector3(0, cellRadius, cellRadius);
+    let maxDistance = 0;
+
+    for (let i = -3; i <= 3; i += 1) {
+      for (let j = -3; j <= 3; j += 1) {
+        for (let k = -3; k <= 3; k += 1) {
+          if (Math.hypot(i, j, k) > 4.15) continue;
+          const position = basisA.clone().multiplyScalar(i)
+            .add(basisB.clone().multiplyScalar(j))
+            .add(basisC.clone().multiplyScalar(k));
+          const isSeed = i === 0 && j === 0 && k === 0;
+          const radial = Math.hypot(i, j, k);
+          const material = new THREE.MeshBasicMaterial({
+            color: isSeed ? 0xff6600 : (radial < 2.25 ? 0xd97a32 : 0x2a1308),
+            transparent: true,
+            opacity: isSeed ? 0.98 : (radial < 2.25 ? 0.84 : 0.66),
+            depthWrite: true,
+            depthTest: true
+          });
+          const edgeMaterial = new THREE.LineBasicMaterial({
+            color: isSeed ? 0xfff6ea : 0xf8eee1,
+            transparent: true,
+            opacity: isSeed ? 0.94 : 0.56,
+            depthWrite: true,
+            depthTest: true
+          });
+          const mesh = new THREE.Mesh(cellGeometry, material);
+          mesh.position.copy(position);
+          mesh.userData.cellIndex = cells.length;
+          const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+          mesh.add(edges);
+          group.add(mesh);
+
+          const cell = {
+            index: cells.length,
+            mesh,
+            edges,
+            material,
+            edgeMaterial,
+            cellId: makeConfigCellId(i + 7, (j + 3) * 7 + (k + 4)),
+            latticeI: i,
+            latticeJ: j,
+            latticeK: k,
+            state: isSeed ? 'stem-bright' : 'core'
+          };
+          cells.push(cell);
+          alive.add(cell.index);
+          maxDistance = Math.max(maxDistance, position.length());
+        }
+      }
+    }
+
+    const seedIndex = cells.findIndex((cell) => cell.latticeI === 0 && cell.latticeJ === 0 && cell.latticeK === 0);
+    const base = new THREE.Mesh(
+      new THREE.CircleGeometry(maxDistance + cellRadius * 4.8, 72),
+      new THREE.MeshBasicMaterial({ color: 0x090909, transparent: true, opacity: 0.9 })
+    );
+    base.rotation.x = -Math.PI / 2;
+    base.position.y = -(cellRadius * 3.4);
+    group.add(base);
+
+    configScene.add(group);
+    configCurrentGroup = group;
+    rhombicDodecahedronState = {
+      group,
+      cells,
+      alive,
+      seedIndex,
+      cellRadius,
+      cameraPosition: new THREE.Vector3(maxDistance * 2.1, maxDistance * 1.55, maxDistance * 1.9),
+      lookAt: new THREE.Vector3(0, 0, 0)
+    };
+
+    styleOverlayTag(configCellLabel, 0xff6600);
+    showOverlayLabel(configCellLabel, 'STEM CELL', getRhombicDodecahedronLabelPosition(cells[seedIndex]));
+    hideOverlayLabel(configShardLabel);
+    hideOverlayLabel(configHoverLabel);
+    configRegionLabels.forEach(hideOverlayLabel);
+    configStageCaption.textContent = 'RHOMBIC DODECAHEDRON // DENSE PACKING';
+    renderConfigScene();
+  }
+
+  function updateRhombicDodecahedronAnimation(time) {
+    if (!rhombicDodecahedronState) return;
+    configPerspectiveCamera.position.copy(rhombicDodecahedronState.cameraPosition);
+    configPerspectiveCamera.lookAt(rhombicDodecahedronState.lookAt);
+    updateOverlayLabelPosition(configCellLabel);
+    updateOverlayLabelPosition(configHoverLabel);
+  }
+
   function getArbitraryConnectivityLabelPosition(node) {
     if (!arbitraryConnectivityState || !node?.mesh) return node?.mesh?.position || new THREE.Vector3();
     return new THREE.Vector3(
@@ -6805,6 +6999,7 @@ tailwind.config = {
     if (configSelectedMode === '3d-hexagonal-stacked') updateHexagonalStackedAnimation(time);
     if (configSelectedMode === '3d-hexagonal-offset') updateHexagonalOffsetAnimation(time);
     if (configSelectedMode === 'arbitrary-connectivity') updateArbitraryConnectivityAnimation(time);
+    if (configSelectedMode === 'rhombic-dodecahedron') updateRhombicDodecahedronAnimation(time);
     if (configSelectedMode === '2d-areas') updateAreasAnimation(time);
 
     if (!document.getElementById('config-overlay').classList.contains('hidden')) {
