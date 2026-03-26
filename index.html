@@ -150,13 +150,15 @@ tailwind.config = {
     opacity: 0.22;
   }
   .site-lockup {
-    --site-scale: 0.42;
+    --site-scale: 1;
     --site-lockup-gap: calc(16.875px * var(--site-scale));
     display: inline-grid;
     grid-template-columns: auto auto;
     align-items: center;
     gap: var(--site-lockup-gap);
     font-size: calc(34px * var(--site-scale));
+    position: relative;
+    top: 4px;
   }
   .site-lockup-icon {
     width: calc(128px * var(--site-scale));
@@ -334,7 +336,7 @@ tailwind.config = {
 </div>
 
 <!-- Header -->
-<header class="header-band fixed top-0 left-0 w-screen max-w-none px-8 pt-4 pb-2 flex justify-between items-center z-50 pointer-events-none border-b border-primary/10">
+<header class="header-band fixed top-0 left-0 w-screen max-w-none px-8 py-0 flex justify-between items-center z-50 pointer-events-none border-b border-primary/10">
   <div class="pointer-events-auto">
     <div class="site-lockup" aria-label="ImpactMesh logo">
       <img src="assets/logo-mark.svg" alt="ImpactMesh logo" class="site-lockup-icon" />
