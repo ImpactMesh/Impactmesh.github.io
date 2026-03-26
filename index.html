@@ -150,8 +150,7 @@ tailwind.config = {
     opacity: 0.22;
   }
   .site-lockup {
-    display: inline-grid;
-    grid-template-columns: auto auto;
+    display: inline-flex;
     align-items: center;
     gap: 0.7rem;
   }
@@ -163,12 +162,13 @@ tailwind.config = {
     flex: 0 0 auto;
   }
   .site-lockup-word {
+    display: flex;
+    align-items: center;
     font-family: 'Chakra Petch', sans-serif;
     font-size: 1.55rem;
-    line-height: 1;
+    line-height: 0.94;
     letter-spacing: 0.18em;
     color: #ff6600;
-    text-shadow: 0 0 10px #FF6600, 0 0 2px rgba(255, 102, 0, 0.8);
     white-space: nowrap;
   }
   .site-lockup-impact {
@@ -327,7 +327,7 @@ tailwind.config = {
 </div>
 
 <!-- Header -->
-<header class="header-band fixed top-0 left-0 w-screen max-w-none px-8 py-4 flex justify-between items-start z-50 pointer-events-none border-b border-primary/10">
+<header class="header-band fixed top-0 left-0 w-screen max-w-none px-8 py-4 flex justify-between items-center z-50 pointer-events-none border-b border-primary/10">
   <div class="pointer-events-auto">
     <div class="site-lockup" aria-label="ImpactMesh logo">
       <img src="assets/logo-mark.svg" alt="ImpactMesh logo" class="site-lockup-icon" />
