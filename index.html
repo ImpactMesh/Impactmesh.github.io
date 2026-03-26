@@ -9,6 +9,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script>
 tailwind.config = {
@@ -147,6 +148,34 @@ tailwind.config = {
       transparent 4px
     );
     opacity: 0.22;
+  }
+  .site-lockup {
+    display: inline-grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    gap: 0.7rem;
+  }
+  .site-lockup-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: block;
+    object-fit: contain;
+    flex: 0 0 auto;
+  }
+  .site-lockup-word {
+    font-family: 'Chakra Petch', sans-serif;
+    font-size: 1.55rem;
+    line-height: 1;
+    letter-spacing: 0.18em;
+    color: #ff6600;
+    text-shadow: 0 0 10px #FF6600, 0 0 2px rgba(255, 102, 0, 0.8);
+    white-space: nowrap;
+  }
+  .site-lockup-impact {
+    font-weight: 700;
+  }
+  .site-lockup-mesh {
+    font-weight: 400;
   }
   .mesh-ray-layer {
     position: absolute;
@@ -299,9 +328,13 @@ tailwind.config = {
 
 <!-- Header -->
 <header class="header-band fixed top-0 left-0 w-screen max-w-none px-8 py-4 flex justify-between items-start z-50 pointer-events-none border-b border-primary/10">
-  <div class="flex flex-col pointer-events-auto">
-    <div class="text-primary font-headline font-bold text-2xl tracking-tighter electric-bloom">IMPACT_MESH_V0.1</div>
-    <div class="text-[10px] text-tertiary font-mono tracking-widest opacity-80 yellow-bloom">MESH_SYSTEM_01 // SPATIAL_VERIFICATION_CORE</div>
+  <div class="pointer-events-auto">
+    <div class="site-lockup" aria-label="ImpactMesh logo">
+      <img src="assets/logo-mark.svg" alt="ImpactMesh logo" class="site-lockup-icon" />
+      <div class="site-lockup-word">
+        <span class="site-lockup-impact">IMPACT</span><span class="site-lockup-mesh">MESH</span>
+      </div>
+    </div>
   </div>
   <div class="hidden md:flex items-center gap-3 pointer-events-auto">
     <span class="w-2 h-2 rounded-full bg-outline"></span>
