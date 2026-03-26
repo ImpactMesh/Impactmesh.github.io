@@ -150,23 +150,29 @@ tailwind.config = {
     opacity: 0.22;
   }
   .site-lockup {
-    display: inline-flex;
+    --site-scale: 0.42;
+    --site-lockup-gap: calc(16.875px * var(--site-scale));
+    display: inline-grid;
+    grid-template-columns: auto auto;
     align-items: center;
-    gap: 0.7rem;
+    gap: var(--site-lockup-gap);
+    font-size: calc(34px * var(--site-scale));
   }
   .site-lockup-icon {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: calc(128px * var(--site-scale));
+    height: calc(128px * var(--site-scale));
     display: block;
     object-fit: contain;
+    margin: 0 calc(-28.89px * var(--site-scale)) 0 0;
     flex: 0 0 auto;
-    transform: translateY(-1px);
+    transform: translateY(-1px) scale(1.08);
+    transform-origin: center;
   }
   .site-lockup-word {
     display: flex;
     align-items: center;
     font-family: 'Chakra Petch', sans-serif;
-    font-size: 1.55rem;
+    font-size: 1em;
     line-height: 0.94;
     letter-spacing: 0.18em;
     color: #ff6600;
