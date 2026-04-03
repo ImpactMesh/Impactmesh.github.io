@@ -150,41 +150,14 @@ tailwind.config = {
     opacity: 0.22;
   }
   .site-lockup {
-    --site-scale: 0.64;
-    --site-lockup-gap: calc(16.875px * var(--site-scale));
-    display: inline-grid;
-    grid-template-columns: auto auto;
-    align-items: center;
-    gap: var(--site-lockup-gap);
-    font-size: calc(34px * var(--site-scale));
+    display: inline-block;
     position: relative;
     top: 4px;
   }
-  .site-lockup-icon {
-    width: calc(128px * var(--site-scale));
-    height: calc(128px * var(--site-scale));
+  .site-lockup-render {
     display: block;
-    object-fit: contain;
-    margin: 0 calc(-28.89px * var(--site-scale)) 0 0;
-    flex: 0 0 auto;
-    transform: translateY(-1px) scale(1.08);
-    transform-origin: center;
-  }
-  .site-lockup-word {
-    display: flex;
-    align-items: center;
-    font-family: 'Chakra Petch', sans-serif;
-    font-size: 1em;
-    line-height: 0.94;
-    letter-spacing: 0.18em;
-    color: #ff6600;
-    white-space: nowrap;
-  }
-  .site-lockup-impact {
-    font-weight: 700;
-  }
-  .site-lockup-mesh {
-    font-weight: 400;
+    width: 247px;
+    height: auto;
   }
   .mesh-ray-layer {
     position: absolute;
@@ -339,10 +312,7 @@ tailwind.config = {
 <header class="header-band fixed top-0 left-0 w-screen max-w-none px-8 py-0 flex justify-between items-center z-50 pointer-events-none border-b border-primary/10">
   <div class="pointer-events-auto">
     <div class="site-lockup" aria-label="ImpactMesh logo">
-      <img src="assets/logo-mark.svg" alt="ImpactMesh logo" class="site-lockup-icon" />
-      <div class="site-lockup-word">
-        <span class="site-lockup-impact">IMPACT</span><span class="site-lockup-mesh">MESH</span>
-      </div>
+      <img src="assets/logo-lockup-header.png" alt="ImpactMesh logo" class="site-lockup-render" />
     </div>
   </div>
   <div class="hidden md:flex items-center gap-3 pointer-events-auto">
